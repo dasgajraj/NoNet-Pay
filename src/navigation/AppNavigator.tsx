@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import HomeScreen from '../screens/HomeScreen';
 import SendMoneyScreen from '../screens/SendMoneyScreen';
-import RequestMoneyScreen from '../screens/RequestMoneyScreen';
 import { Screen } from '../types';
 import { requestPermissions, dialUssd as dialUssdService } from '../services/ussdService';
 
@@ -30,8 +29,6 @@ const AppNavigator: React.FC = () => {
         return <HomeScreen {...commonProps} />;
       case 'send':
         return <SendMoneyScreen {...commonProps} />;
-      case 'request':
-        return <RequestMoneyScreen {...commonProps} />;
       default:
         return <HomeScreen {...commonProps} />;
     }

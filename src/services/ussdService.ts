@@ -1,5 +1,6 @@
 import { Alert, PermissionsAndroid, Clipboard } from 'react-native';
 import { dialUssdWithIntent } from '../UssdModule';
+import { showToast } from '../ToastModule';
 
 export const requestPermissions = async (): Promise<void> => {
   try {
@@ -23,16 +24,12 @@ export const dialUssd = async (
     // Copy data to clipboard if provided
     if (dataToCopy) {
       await Clipboard.setString(dataToCopy);
+      // Show toast notification
+      showToast(`${dataToCopy} copied to clipboard`);
     }
     
     await dialUssdWithIntent(code);
     setLoading(false);
-    
-    const message = dataToCopy 
-      ? `Data copied to clipboard: ${dataToCopy}\n\nPaste it in the USSD menu when prompted.`
-      : 'Please complete the transaction on the phone dialer screen.';
-    
-    Alert.alert('USSD Dialed', message);
   } catch (error: any) {
     setLoading(false);
     Alert.alert(

@@ -1,4 +1,4 @@
-export type Screen = 'home' | 'send' | 'request';
+export type Screen = 'home' | 'send';
 
 export interface NavigationProps {
   currentScreen: Screen;
