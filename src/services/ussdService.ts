@@ -1,6 +1,7 @@
 import { Alert, PermissionsAndroid, Clipboard, Vibration } from 'react-native';
 import { dialUssdWithIntent } from '../UssdModule';
 import { showToast } from '../ToastModule';
+import { showFloatingOverlay } from '../FloatingOverlayModule';
 
 export const requestPermissions = async (): Promise<void> => {
   try {
@@ -33,11 +34,10 @@ export const dialUssd = async (
       // Show enhanced toast notification
       showToast(`✅ ${dataToCopy} - READY TO PASTE!`);
       
-      // Wait 2 seconds for user to see the toast
-      await delay(2000);
+      // Show floating overlay with data
+      showFloatingOverlay(dataToCopy);
       
-      // Show countdown toast
-      showToast('Opening USSD dialer...');
+      // Wait 1 second for user to see notifications
       await delay(1000);
     }
     

@@ -18,6 +18,7 @@ class MainApplication : Application(), ReactApplication {
           // add(MyReactNativePackage())
           add(UssdPackage())
           add(ToastPackage())
+          add(FloatingOverlayPackage())
         },
     )
   }
