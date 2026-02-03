@@ -1,6 +1,17 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    
+    <uses-permission android:name="android.permission.CALL_PHONE" tools:node="replace" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="replace" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" tools:node="replace" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+    </queries>
 
     <application
       android:name=".MainApplication"
@@ -9,8 +20,10 @@
       android:roundIcon="@mipmap/ic_launcher_round"
       android:allowBackup="false"
       android:theme="@style/AppTheme"
-      android:usesCleartextTraffic="${usesCleartextTraffic}"
-      android:supportsRtl="true">
+      android:usesCleartextTraffic="true"
+      android:supportsRtl="true"
+      tools:replace="android:allowBackup">
+      
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"
