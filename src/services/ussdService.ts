@@ -1,4 +1,4 @@
-import { Alert, PermissionsAndroid, Clipboard } from 'react-native';
+import { Alert, PermissionsAndroid, Clipboard, Vibration } from 'react-native';
 import { dialUssdWithIntent } from '../UssdModule';
 import { showToast } from '../ToastModule';
 
@@ -13,6 +13,8 @@ export const requestPermissions = async (): Promise<void> => {
   }
 };
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const dialUssd = async (
   code: string,
   setLoading: (loading: boolean) => void,
@@ -24,8 +26,19 @@ export const dialUssd = async (
     // Copy data to clipboard if provided
     if (dataToCopy) {
       await Clipboard.setString(dataToCopy);
-      // Show toast notification
-      showToast(`${dataToCopy} copied to clipboard`);
+      
+      // Vibration pattern: short-short-long
+      Vibration.vibrate([0, 100, 50, 100, 50, 200]);
+      
+      // Show enhanced toast notification
+      showToast(`✅ ${dataToCopy} - READY TO PASTE!`);
+      
+      // Wait 2 seconds for user to see the toast
+      await delay(2000);
+      
+      // Show countdown toast
+      showToast('Opening USSD dialer...');
+      await delay(1000);
     }
     
     await dialUssdWithIntent(code);

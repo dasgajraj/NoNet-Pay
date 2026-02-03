@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { styles as globalStyles, colors } from '../constants/styles';
 import { USSD_CODES } from '../services/ussdService';
+import TutorialModal, { TUTORIAL_KEY } from './TutorialModal';
 
 interface RequestMoneyModalProps {
   visible: boolean;
@@ -18,6 +20,20 @@ const RequestMoneyModal: React.FC<RequestMoneyModalProps> = ({
 }) => {
   const [requestUpiId, setRequestUpiId] = useState('');
   const [inputType, setInputType] = useState<'upi' | 'mobile'>('upi');
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      checkFirstTime();
+    }
+  }, [visible]);
+
+  const checkFirstTime = async () => {
+    const hasSeenTutorial = await AsyncStorage.getItem(TUTORIAL_KEY);
+    if (!hasSeenTutorial) {
+      setShowTutorial(true);
+    }
+  };
 
   const handleSubmit = () => {
     if (requestUpiId) {
@@ -34,98 +50,120 @@ const RequestMoneyModal: React.FC<RequestMoneyModalProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
-    >
-      <View style={modalStyles.overlay}>
-        <View style={modalStyles.modalContainer}>
-          <Text style={modalStyles.modalTitle}>Request Money</Text>
-
-          <View style={modalStyles.toggleContainer}>
-            <TouchableOpacity
-              style={[
-                modalStyles.toggleButton,
-                inputType === 'upi' && modalStyles.toggleButtonActive,
-              ]}
-              onPress={() => {
-                setInputType('upi');
-                setRequestUpiId('');
-              }}
-            >
-              <Text
-                style={[
-                  modalStyles.toggleText,
-                  inputType === 'upi' && modalStyles.toggleTextActive,
-                ]}
+    <>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleClose}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <View style={modalStyles.headerRow}>
+              <Text style={modalStyles.modalTitle}>Request Money</Text>
+              <TouchableOpacity 
+                style={modalStyles.helpButton}
+                onPress={() => setShowTutorial(true)}
               >
-                UPI ID
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                modalStyles.toggleButton,
-                inputType === 'mobile' && modalStyles.toggleButtonActive,
-              ]}
-              onPress={() => {
-                setInputType('mobile');
-                setRequestUpiId('');
-              }}
-            >
-              <Text
+                <Text style={modalStyles.helpButtonText}>❓</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={modalStyles.toggleContainer}>
+              <TouchableOpacity
                 style={[
-                  modalStyles.toggleText,
-                  inputType === 'mobile' && modalStyles.toggleTextActive,
+                  modalStyles.toggleButton,
+                  inputType === 'upi' && modalStyles.toggleButtonActive,
                 ]}
+                onPress={() => {
+                  setInputType('upi');
+                  setRequestUpiId('');
+                }}
               >
-                Mobile Number
+                <Text
+                  style={[
+                    modalStyles.toggleText,
+                    inputType === 'upi' && modalStyles.toggleTextActive,
+                  ]}
+                >
+                  UPI ID
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  modalStyles.toggleButton,
+                  inputType === 'mobile' && modalStyles.toggleButtonActive,
+                ]}
+                onPress={() => {
+                  setInputType('mobile');
+                  setRequestUpiId('');
+                }}
+              >
+                <Text
+                  style={[
+                    modalStyles.toggleText,
+                    inputType === 'mobile' && modalStyles.toggleTextActive,
+                  ]}
+                >
+                  Mobile Number
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={globalStyles.inputLabel}>
+              {inputType === 'upi' ? 'UPI ID' : 'Mobile Number'}
+            </Text>
+            <TextInput
+              style={globalStyles.inputField}
+              placeholder={
+                inputType === 'upi' ? 'Enter UPI ID (e.g., name@upi)' : 'Enter Mobile Number'
+              }
+              placeholderTextColor="#999"
+              keyboardType={inputType === 'mobile' ? 'phone-pad' : 'default'}
+              maxLength={inputType === 'mobile' ? 10 : undefined}
+              value={requestUpiId}
+              onChangeText={setRequestUpiId}
+            />
+
+            <View style={modalStyles.infoBox}>
+              <Text style={modalStyles.infoText}>
+                💡 Your {inputType === 'upi' ? 'UPI ID' : 'mobile number'} will be copied.
+                Long-press to paste in USSD!
               </Text>
-            </TouchableOpacity>
-          </View>
+            </View>
 
-          <Text style={globalStyles.inputLabel}>
-            {inputType === 'upi' ? 'UPI ID' : 'Mobile Number'}
-          </Text>
-          <TextInput
-            style={globalStyles.inputField}
-            placeholder={
-              inputType === 'upi' ? 'Enter UPI ID (e.g., name@upi)' : 'Enter Mobile Number'
-            }
-            placeholderTextColor="#999"
-            keyboardType={inputType === 'mobile' ? 'phone-pad' : 'default'}
-            maxLength={inputType === 'mobile' ? 10 : undefined}
-            value={requestUpiId}
-            onChangeText={setRequestUpiId}
-          />
+            <View style={modalStyles.buttonContainer}>
+              <TouchableOpacity
+                style={[modalStyles.cancelButton]}
+                onPress={handleClose}
+              >
+                <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
 
-          <View style={modalStyles.buttonContainer}>
-            <TouchableOpacity
-              style={[modalStyles.cancelButton]}
-              onPress={handleClose}
-            >
-              <Text style={modalStyles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                modalStyles.submitButton,
-                !requestUpiId && globalStyles.disabledButton,
-              ]}
-              onPress={handleSubmit}
-              disabled={!requestUpiId || loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={modalStyles.submitButtonText}>Request</Text>
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  modalStyles.submitButton,
+                  !requestUpiId && globalStyles.disabledButton,
+                ]}
+                onPress={handleSubmit}
+                disabled={!requestUpiId || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={modalStyles.submitButtonText}>Request</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      <TutorialModal
+        visible={showTutorial}
+        onClose={() => setShowTutorial(false)}
+      />
+    </>
   );
 };
 
@@ -149,12 +187,27 @@ const modalStyles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
-    marginBottom: 20,
-    textAlign: 'center',
+  },
+  helpButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  helpButtonText: {
+    fontSize: 16,
   },
   toggleContainer: {
     flexDirection: 'row',
@@ -179,6 +232,19 @@ const modalStyles = StyleSheet.create({
   },
   toggleTextActive: {
     color: colors.white,
+  },
+  infoBox: {
+    backgroundColor: '#E8F5E9',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 15,
+    marginBottom: 5,
+  },
+  infoText: {
+    fontSize: 13,
+    color: colors.textLight,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   buttonContainer: {
     flexDirection: 'row',
