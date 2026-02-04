@@ -176,4 +176,28 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 15,
   },
+  qrScanButton: {
+    backgroundColor: colors.primary,
+    marginHorizontal: 20,
+    marginVertical: 15,
+    padding: 20,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  qrScanIcon: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  qrScanText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.white,
+  },
 });

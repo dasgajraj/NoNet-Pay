@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Vibration, Clipboard, ToastAndroid } from 'react-native';
 import { styles, colors } from '../constants/styles';
 import { USSD_CODES } from '../services/ussdService';
 import { NavigationProps, UssdServiceProps } from '../types';
@@ -15,12 +15,20 @@ const RequestMoneyScreen: React.FC<RequestMoneyScreenProps> = ({
   const [requestAmount, setRequestAmount] = useState('');
   const [inputType, setInputType] = useState<'upi' | 'mobile'>('upi');
 
-  const isFormValid = requestUpiId && requestAmount;
+  // For mobile mode, only mobile number is required. For UPI mode, both are required.
+  const isFormValid = inputType === 'mobile' ? requestUpiId : (requestUpiId && requestAmount);
 
   return (
     <View style={styles.container}>
       <View style={styles.screenHeader}>
-        <TouchableOpacity onPress={() => setCurrentScreen('home')}>
+        <TouchableOpacity onPress={() => {
+          try {
+            Vibration.vibrate(50); // Button press feedback
+          } catch (e) {
+            console.error('Vibration error:', e);
+          }
+          setCurrentScreen('home');
+        }}>
           <Text style={styles.backButton}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.screenTitle}>Request Money</Text>
@@ -39,6 +47,11 @@ const RequestMoneyScreen: React.FC<RequestMoneyScreenProps> = ({
               borderColor: colors.primary,
             }}
             onPress={() => {
+              try {
+                Vibration.vibrate(50); // Button press feedback
+              } catch (e) {
+                console.error('Vibration error:', e);
+              }
               setInputType('upi');
               setRequestUpiId('');
             }}
@@ -62,6 +75,11 @@ const RequestMoneyScreen: React.FC<RequestMoneyScreenProps> = ({
               borderColor: colors.primary,
             }}
             onPress={() => {
+              try {
+                Vibration.vibrate(50); // Button press feedback
+              } catch (e) {
+                console.error('Vibration error:', e);
+              }
               setInputType('mobile');
               setRequestUpiId('');
             }}
@@ -89,10 +107,12 @@ const RequestMoneyScreen: React.FC<RequestMoneyScreenProps> = ({
           onChangeText={setRequestUpiId}
         />
 
-        <Text style={styles.inputLabel}>Amount (₹)</Text>
+        <Text style={styles.inputLabel}>
+          Amount (₹) {inputType === 'mobile' ? '(Optional - enter in dialog)' : ''}
+        </Text>
         <TextInput
           style={styles.inputField}
-          placeholder="Enter amount"
+          placeholder={inputType === 'mobile' ? 'Enter in USSD dialog' : 'Enter amount'}
           placeholderTextColor="#999"
           keyboardType="numeric"
           value={requestAmount}
@@ -101,7 +121,31 @@ const RequestMoneyScreen: React.FC<RequestMoneyScreenProps> = ({
 
         <TouchableOpacity
           style={[styles.primaryButton, !isFormValid && styles.disabledButton]}
-          onPress={() => dialUssd(USSD_CODES.REQUEST_MONEY, requestUpiId)}
+          onPress={async () => {
+            try {
+              Vibration.vibrate([0, 100, 100, 100]); // Success pattern
+              
+              if (inputType === 'upi') {
+                // Copy UPI ID to clipboard
+                await Clipboard.setString(requestUpiId);
+                ToastAndroid.show('✅ UPI ID IS COPIED - Paste in dialog!', ToastAndroid.LONG);
+                
+                // Wait 500ms before opening USSD
+                await new Promise(resolve => setTimeout(resolve, 500));
+                dialUssd(USSD_CODES.REQUEST_MONEY, requestUpiId);
+              } else {
+                // Mobile number mode - use direct USSD code without amount
+                ToastAndroid.show('💡 Enter amount and UPI PIN in dialog', ToastAndroid.LONG);
+                const ussdCode = `*99*2*${requestUpiId}#`;
+                
+                // Wait 500ms before opening USSD
+                await new Promise(resolve => setTimeout(resolve, 500));
+                dialUssd(ussdCode);
+              }
+            } catch (error) {
+              console.error('Error:', error);
+            }
+          }}
           disabled={!isFormValid || loading}
         >
           {loading ? (
@@ -111,7 +155,11 @@ const RequestMoneyScreen: React.FC<RequestMoneyScreenProps> = ({
           )}
         </TouchableOpacity>
 
-        <Text style={styles.helperText}>Opens Request Money option directly</Text>
+        <Text style={styles.helperText}>
+          {inputType === 'upi' 
+            ? 'UPI ID will be copied - just paste it in the dialog!' 
+            : 'Opens Request Money - enter amount and UPI PIN in dialog'}
+        </Text>
       </View>
     </View>
   );

@@ -4,15 +4,20 @@ import { styles, colors } from '../constants/styles';
 import { USSD_CODES } from '../services/ussdService';
 import { NavigationProps, UssdServiceProps } from '../types';
 import RequestMoneyModal from '../components/RequestMoneyModal';
+import QRScanner from '../components/QRScanner';
 
-interface HomeScreenProps extends NavigationProps, UssdServiceProps {}
+interface HomeScreenProps extends NavigationProps, UssdServiceProps {
+  onScanQR?: (upiId: string) => void;
+}
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
   setCurrentScreen,
   dialUssd,
   loading,
+  onScanQR,
 }) => {
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   return (
     <>
@@ -100,6 +105,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           </TouchableOpacity>
         </View>
 
+        {/* Central QR Scanner Button */}
+        <TouchableOpacity
+          style={styles.qrScanButton}
+          onPress={() => setShowQRScanner(true)}
+        >
+          <Text style={styles.qrScanIcon}>📷</Text>
+          <Text style={styles.qrScanText}>Scan UPI QR Code</Text>
+        </TouchableOpacity>
+
         <View style={styles.footer}>
           <Text style={styles.footerText}>Secure offline UPI transactions</Text>
         </View>
@@ -110,6 +124,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         onClose={() => setShowRequestModal(false)}
         dialUssd={dialUssd}
         loading={loading}
+      />
+
+      <QRScanner
+        visible={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScan={(upiId) => {
+          if (onScanQR) onScanQR(upiId);
+          setCurrentScreen('send');
+        }}
       />
     </>
   );

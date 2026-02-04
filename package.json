@@ -16,7 +16,8 @@
     "react-native": "0.83.1",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-ussd": "^1.1.1",
-    "react-native-vector-icons": "^10.3.0"
+    "react-native-vector-icons": "^10.3.0",
+    "react-native-vision-camera": "^4.7.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

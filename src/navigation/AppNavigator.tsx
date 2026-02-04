@@ -7,6 +7,7 @@ import { requestPermissions, dialUssd as dialUssdService } from '../services/uss
 const AppNavigator: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [loading, setLoading] = useState(false);
+  const [scannedUpiId, setScannedUpiId] = useState<string | null>(null);
 
   useEffect(() => {
     requestPermissions();
@@ -14,6 +15,10 @@ const AppNavigator: React.FC = () => {
 
   const dialUssd = useCallback(async (code: string, dataToCopy?: string) => {
     await dialUssdService(code, setLoading, dataToCopy);
+  }, []);
+
+  const handleScanQR = useCallback((upiId: string) => {
+    setScannedUpiId(upiId);
   }, []);
 
   const renderScreen = () => {
@@ -26,11 +31,11 @@ const AppNavigator: React.FC = () => {
 
     switch (currentScreen) {
       case 'home':
-        return <HomeScreen {...commonProps} />;
+        return <HomeScreen {...commonProps} onScanQR={handleScanQR} />;
       case 'send':
-        return <SendMoneyScreen {...commonProps} />;
+        return <SendMoneyScreen {...commonProps} scannedUpiId={scannedUpiId} />;
       default:
-        return <HomeScreen {...commonProps} />;
+        return <HomeScreen {...commonProps} onScanQR={handleScanQR} />;
     }
   };
 
