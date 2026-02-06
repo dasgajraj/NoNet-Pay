@@ -17,6 +17,9 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
 import {
   checkBiometricAvailability,
   authenticateWithBiometric,
@@ -25,21 +28,18 @@ import {
 
 const { width } = Dimensions.get('window');
 
+type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
+
 interface QuickAction {
   id: string;
   title: string;
   icon: string;
   gradient: string[];
-  screen: string;
+  screen: keyof RootStackParamList;
 }
 
-interface HomeScreenProps {
-  setCurrentScreen: (screen: string) => void;
-  dialUssd: (code: string) => Promise<void>;
-  loading: boolean;
-}
-
-const HomeScreen: React.FC<HomeScreenProps> = ({ setCurrentScreen }) => {
+const HomeScreen: React.FC = () => {
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const [isLocked, setIsLocked] = useState(true);
   const [balance, setBalance] = useState('₹0.00');
   const [biometryType, setBiometryType] = useState<string>('');
@@ -107,28 +107,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ setCurrentScreen }) => {
       title: 'Send Money',
       icon: 'arrow-up-circle',
       gradient: ['#FF6B6B', '#FF8E8E'],
-      screen: 'send',
+      screen: 'SendMoney',
     },
     {
       id: 'request',
       title: 'Request',
       icon: 'arrow-down-circle',
       gradient: ['#4ECDC4', '#6FE7DD'],
-      screen: 'request',
+      screen: 'RequestMoney',
     },
     {
       id: 'scan',
       title: 'Scan QR',
       icon: 'qrcode-scan',
       gradient: ['#95E1D3', '#AAF683'],
-      screen: 'scan',
-    },
-    {
-      id: 'test',
-      title: 'USSD Test',
-      icon: 'phone-message',
-      gradient: ['#A8E6CF', '#DCEDC1'],
-      screen: 'test',
+      screen: 'SendMoney',
     },
   ];
 
@@ -251,7 +244,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ setCurrentScreen }) => {
               >
                 <TouchableOpacity
                   style={styles.actionCard}
-                  onPress={() => setCurrentScreen(action.screen)}
+                  onPress={() => {
+                    if (action.screen === 'SendMoney') {
+                      navigation.navigate('SendMoney', {});
+                    } else {
+                      navigation.navigate(action.screen as any);
+                    }
+                  }}
                   activeOpacity={0.7}
                 >
                   <LinearGradient

@@ -1,168 +1,502 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Vibration, Clipboard, ToastAndroid } from 'react-native';
-import { styles, colors } from '../constants/styles';
-import { USSD_CODES } from '../services/ussdService';
-import { NavigationProps, UssdServiceProps } from '../types';
+/**
+ * Modern Request Money Screen with Interactive UI
+ */
 
-interface RequestMoneyScreenProps extends NavigationProps, UssdServiceProps {}
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Animated,
+  StatusBar,
+  Share,
+  Alert,
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
 
-const RequestMoneyScreen: React.FC<RequestMoneyScreenProps> = ({
-  setCurrentScreen,
-  dialUssd,
-  loading,
-}) => {
-  const [requestUpiId, setRequestUpiId] = useState('');
-  const [requestAmount, setRequestAmount] = useState('');
-  const [inputType, setInputType] = useState<'upi' | 'mobile'>('upi');
+type RequestMoneyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'RequestMoney'>;
 
-  // For mobile mode, only mobile number is required. For UPI mode, both are required.
-  const isFormValid = inputType === 'mobile' ? requestUpiId : (requestUpiId && requestAmount);
+const RequestMoneyScreen: React.FC = () => {
+  const navigation = useNavigation<RequestMoneyScreenNavigationProp>();
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [upiId, setUpiId] = useState('yourname@upi');
+  const [showQR, setShowQR] = useState(false);
+
+  const fadeAnim = useState(new Animated.Value(0))[0];
+  const slideAnim = useState(new Animated.Value(30))[0];
+  const qrAnim = useState(new Animated.Value(0))[0];
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const quickAmounts = [50, 100, 250, 500, 1000, 2000];
+
+  const selectAmount = (amt: number) => {
+    setAmount(amt.toString());
+  };
+
+  const generateQRCode = () => {
+    if (!amount) {
+      Alert.alert('Enter Amount', 'Please enter the amount you want to request');
+      return;
+    }
+    setShowQR(true);
+    Animated.spring(qrAnim, {
+      toValue: 1,
+      tension: 40,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const sharePaymentLink = async () => {
+    const message = `Please pay ₹${amount} to ${upiId}${note ? `\nNote: ${note}` : ''}`;
+    try {
+      await Share.share({
+        message,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.screenHeader}>
-        <TouchableOpacity onPress={() => {
-          try {
-            Vibration.vibrate(50); // Button press feedback
-          } catch (e) {
-            console.error('Vibration error:', e);
-          }
-          setCurrentScreen('home');
-        }}>
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.screenTitle}>Request Money</Text>
-      </View>
+      <StatusBar barStyle="light-content" backgroundColor="#5f4dee" />
 
-      <View style={styles.formCard}>
-        <View style={{ flexDirection: 'row', marginBottom: 15 }}>
-          <TouchableOpacity
-            style={{
-              flex: 1,
-              padding: 12,
-              backgroundColor: inputType === 'upi' ? colors.primary : colors.white,
-              borderRadius: 10,
-              marginRight: 8,
-              borderWidth: 1,
-              borderColor: colors.primary,
-            }}
-            onPress={() => {
-              try {
-                Vibration.vibrate(50); // Button press feedback
-              } catch (e) {
-                console.error('Vibration error:', e);
-              }
-              setInputType('upi');
-              setRequestUpiId('');
-            }}
-          >
-            <Text style={{ 
-              color: inputType === 'upi' ? colors.white : colors.primary, 
-              textAlign: 'center',
-              fontWeight: '600',
-            }}>
-              UPI ID
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{
-              flex: 1,
-              padding: 12,
-              backgroundColor: inputType === 'mobile' ? colors.primary : colors.white,
-              borderRadius: 10,
-              marginLeft: 8,
-              borderWidth: 1,
-              borderColor: colors.primary,
-            }}
-            onPress={() => {
-              try {
-                Vibration.vibrate(50); // Button press feedback
-              } catch (e) {
-                console.error('Vibration error:', e);
-              }
-              setInputType('mobile');
-              setRequestUpiId('');
-            }}
-          >
-            <Text style={{ 
-              color: inputType === 'mobile' ? colors.white : colors.primary, 
-              textAlign: 'center',
-              fontWeight: '600',
-            }}>
-              Mobile Number
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.inputLabel}>
-          {inputType === 'upi' ? 'UPI ID' : 'Mobile Number'}
-        </Text>
-        <TextInput
-          style={styles.inputField}
-          placeholder={inputType === 'upi' ? 'Enter UPI ID (e.g., name@upi)' : 'Enter Mobile Number'}
-          placeholderTextColor="#999"
-          keyboardType={inputType === 'mobile' ? 'phone-pad' : 'default'}
-          maxLength={inputType === 'mobile' ? 10 : undefined}
-          value={requestUpiId}
-          onChangeText={setRequestUpiId}
-        />
-
-        <Text style={styles.inputLabel}>
-          Amount (₹) {inputType === 'mobile' ? '(Optional - enter in dialog)' : ''}
-        </Text>
-        <TextInput
-          style={styles.inputField}
-          placeholder={inputType === 'mobile' ? 'Enter in USSD dialog' : 'Enter amount'}
-          placeholderTextColor="#999"
-          keyboardType="numeric"
-          value={requestAmount}
-          onChangeText={setRequestAmount}
-        />
-
-        <TouchableOpacity
-          style={[styles.primaryButton, !isFormValid && styles.disabledButton]}
-          onPress={async () => {
-            try {
-              Vibration.vibrate([0, 100, 100, 100]); // Success pattern
-              
-              if (inputType === 'upi') {
-                // Copy UPI ID to clipboard
-                await Clipboard.setString(requestUpiId);
-                ToastAndroid.show('✅ UPI ID IS COPIED - Paste in dialog!', ToastAndroid.LONG);
-                
-                // Wait 500ms before opening USSD
-                await new Promise(resolve => setTimeout(resolve, 500));
-                dialUssd(USSD_CODES.REQUEST_MONEY, requestUpiId);
-              } else {
-                // Mobile number mode - use direct USSD code without amount
-                ToastAndroid.show('💡 Enter amount and UPI PIN in dialog', ToastAndroid.LONG);
-                const ussdCode = `*99*2*${requestUpiId}#`;
-                
-                // Wait 500ms before opening USSD
-                await new Promise(resolve => setTimeout(resolve, 500));
-                dialUssd(ussdCode);
-              }
-            } catch (error) {
-              console.error('Error:', error);
-            }
-          }}
-          disabled={!isFormValid || loading}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <Animated.View
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Send Request</Text>
-          )}
-        </TouchableOpacity>
+          {/* Header Card */}
+          <View style={styles.headerCard}>
+            <LinearGradient
+              colors={['#5f4dee', '#7b68ee']}
+              style={styles.headerGradient}
+            >
+              <Icon name="cash-multiple" size={48} color="#fff" />
+              <Text style={styles.headerTitle}>Request Payment</Text>
+              <Text style={styles.headerSubtitle}>
+                Generate QR or share payment link
+              </Text>
+            </LinearGradient>
+          </View>
 
-        <Text style={styles.helperText}>
-          {inputType === 'upi' 
-            ? 'UPI ID will be copied - just paste it in the dialog!' 
-            : 'Opens Request Money - enter amount and UPI PIN in dialog'}
-        </Text>
-      </View>
+          {/* UPI ID Section */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Your UPI ID</Text>
+            <View style={styles.inputCard}>
+              <Icon name="at" size={20} color="#5f4dee" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="yourname@upi"
+                placeholderTextColor="#999"
+                value={upiId}
+                onChangeText={setUpiId}
+                autoCapitalize="none"
+              />
+              <Icon name="check-circle" size={20} color="#4CAF50" />
+            </View>
+          </View>
+
+          {/* Amount Input */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Amount to Request</Text>
+            <View style={styles.inputCard}>
+              <Text style={styles.currencySymbol}>₹</Text>
+              <TextInput
+                style={[styles.input, styles.amountInput]}
+                placeholder="0"
+                placeholderTextColor="#999"
+                value={amount}
+                onChangeText={setAmount}
+                keyboardType="numeric"
+              />
+            </View>
+
+            {/* Quick Amount Buttons */}
+            <View style={styles.quickAmounts}>
+              {quickAmounts.map((amt) => (
+                <TouchableOpacity
+                  key={amt}
+                  style={[
+                    styles.quickAmountBtn,
+                    amount === amt.toString() && styles.quickAmountBtnSelected,
+                  ]}
+                  onPress={() => selectAmount(amt)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.quickAmountText,
+                      amount === amt.toString() && styles.quickAmountTextSelected,
+                    ]}
+                  >
+                    ₹{amt}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Note Input */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Add Note (Optional)</Text>
+            <View style={styles.inputCard}>
+              <Icon name="note-text" size={20} color="#5f4dee" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="What's this payment for?"
+                placeholderTextColor="#999"
+                value={note}
+                onChangeText={setNote}
+                multiline
+              />
+            </View>
+          </View>
+
+          {/* QR Code Section */}
+          {showQR && (
+            <Animated.View
+              style={[
+                styles.qrCard,
+                {
+                  opacity: qrAnim,
+                  transform: [
+                    {
+                      scale: qrAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.8, 1],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Text style={styles.qrTitle}>Scan to Pay</Text>
+              <View style={styles.qrPlaceholder}>
+                <Icon name="qrcode" size={150} color="#5f4dee" />
+              </View>
+              <Text style={styles.qrAmount}>₹{amount}</Text>
+              {note && <Text style={styles.qrNote}>{note}</Text>}
+              <Text style={styles.qrUpi}>{upiId}</Text>
+            </Animated.View>
+          )}
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.actionBtn, !amount && styles.actionBtnDisabled]}
+              onPress={generateQRCode}
+              disabled={!amount}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={amount ? ['#5f4dee', '#7b68ee'] : ['#ccc', '#999']}
+                style={styles.actionBtnGradient}
+              >
+                <Icon name="qrcode-scan" size={24} color="#fff" />
+                <Text style={styles.actionBtnText}>Generate QR</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, !amount && styles.actionBtnDisabled]}
+              onPress={sharePaymentLink}
+              disabled={!amount}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={amount ? ['#f093fb', '#f5576c'] : ['#ccc', '#999']}
+                style={styles.actionBtnGradient}
+              >
+                <Icon name="share-variant" size={24} color="#fff" />
+                <Text style={styles.actionBtnText}>Share Link</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* Payment Methods */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Accepted Payment Methods</Text>
+            <View style={styles.paymentMethods}>
+              {[
+                { icon: 'google-pay', name: 'Google Pay', color: '#4285F4' },
+                { icon: 'credit-card', name: 'PhonePe', color: '#5f259f' },
+                { icon: 'bank', name: 'Paytm', color: '#00BAF2' },
+                { icon: 'wallet', name: 'All UPI', color: '#FF9800' },
+              ].map((method, index) => (
+                <View key={index} style={styles.paymentMethod}>
+                  <Icon name={method.icon} size={32} color={method.color} />
+                  <Text style={styles.paymentMethodText}>{method.name}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Info Card */}
+          <View style={styles.infoCard}>
+            <Icon name="information" size={24} color="#5f4dee" />
+            <View style={styles.infoTextContainer}>
+              <Text style={styles.infoTitle}>How it works</Text>
+              <Text style={styles.infoText}>
+                Share the QR code or payment link with the person you want to request money from. They can scan the QR or click the link to pay instantly.
+              </Text>
+            </View>
+          </View>
+        </Animated.View>
+      </ScrollView>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  content: {
+    padding: 20,
+  },
+  headerCard: {
+    marginBottom: 24,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerGradient: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+    marginTop: 12,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.9,
+    marginTop: 4,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1A2E',
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+    marginBottom: 8,
+  },
+  inputCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1A1A2E',
+    padding: 0,
+  },
+  amountInput: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  currencySymbol: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#5f4dee',
+    marginRight: 8,
+  },
+  quickAmounts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 8,
+  },
+  quickAmountBtn: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  quickAmountBtnSelected: {
+    backgroundColor: '#5f4dee',
+    borderColor: '#5f4dee',
+  },
+  quickAmountText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+  },
+  quickAmountTextSelected: {
+    color: '#fff',
+  },
+  qrCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  qrTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A2E',
+    marginBottom: 16,
+  },
+  qrPlaceholder: {
+    width: 200,
+    height: 200,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  qrAmount: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#5f4dee',
+    marginBottom: 8,
+  },
+  qrNote: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  qrUpi: {
+    fontSize: 14,
+    color: '#999',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  actionBtn: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  actionBtnDisabled: {
+    opacity: 0.5,
+  },
+  actionBtnGradient: {
+    paddingVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  paymentMethods: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  paymentMethod: {
+    alignItems: 'center',
+  },
+  paymentMethodText: {
+    fontSize: 10,
+    color: '#666',
+    marginTop: 4,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    backgroundColor: '#e8f4fd',
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+  },
+  infoTextContainer: {
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A2E',
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 18,
+  },
+});
 
 export default RequestMoneyScreen;
