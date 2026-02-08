@@ -1,22 +1,20 @@
 import { StyleSheet } from 'react-native';
 
 export const colors = {
-  primary: '#5f4dee',
-  background: '#f5f5f5',
-  white: '#fff',
+  primary: '#2c2c2c',
+  secondary: '#404040',
+  background: '#fafafa',
+  backgroundDark: '#f5f5f5',
+  white: '#ffffff',
   black: '#1a1a1a',
-  text: '#333',
-  textLight: '#666',
-  textLighter: '#999',
-  border: '#e0e0e0',
-  disabled: '#ccc',
-  success: '#22c55e',
-  info: '#3b82f6',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  purple: '#8b5cf6',
-  pink: '#ec4899',
-  cyan: '#06b6d4',
+  text: '#2c2c2c',
+  textLight: '#6b6b6b',
+  textLighter: '#9e9e9e',
+  border: '#e8e8e8',
+  disabled: '#d4d4d4',
+  success: '#2c2c2c',
+  cardBg: '#ffffff',
+  shadow: '#000000',
 };
 
 export const styles = StyleSheet.create({

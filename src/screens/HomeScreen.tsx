@@ -12,7 +12,6 @@ import {
   StatusBar,
   Animated,
   Dimensions,
-  RefreshControl,
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -25,6 +24,8 @@ import {
   authenticateWithBiometric,
   getBiometricName,
 } from '../services/BiometricAuth';
+import { USSD_CODES, dialUssd, requestPermissions } from '../services/ussdService';
+import QRScanner from '../components/QRScanner';
 
 const { width } = Dimensions.get('window');
 
@@ -41,15 +42,20 @@ interface QuickAction {
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [isLocked, setIsLocked] = useState(true);
-  const [balance, setBalance] = useState('₹0.00');
   const [biometryType, setBiometryType] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const fadeAnim = useState(new Animated.Value(0))[0];
   const slideAnim = useState(new Animated.Value(50))[0];
 
   useEffect(() => {
-    initBiometric();
+    // Delay initialization to ensure Activity is ready
+    const timer = setTimeout(() => {
+      initBiometric();
+      requestPermissions();
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -59,11 +65,19 @@ const HomeScreen: React.FC = () => {
   }, [isLocked]);
 
   const initBiometric = async () => {
-    const { available, biometryType } = await checkBiometricAvailability();
-    if (available && biometryType) {
-      setBiometryType(getBiometricName(biometryType));
-    } else {
-      // No biometric available, unlock immediately
+    try {
+      const { available, biometryType } = await checkBiometricAvailability();
+      if (available && biometryType) {
+        setBiometryType(getBiometricName(biometryType));
+        // Automatically trigger biometric authentication
+        handleBiometricAuth();
+      } else {
+        // No biometric available, unlock immediately
+        setIsLocked(false);
+      }
+    } catch (error) {
+      console.error('Error initializing biometric:', error);
+      // On error, unlock immediately
       setIsLocked(false);
     }
   };
@@ -76,6 +90,10 @@ const HomeScreen: React.FC = () => {
     if (success) {
       setIsLocked(false);
     }
+  };
+
+  const skipBiometric = () => {
+    setIsLocked(false);
   };
 
   const animateContent = () => {
@@ -93,135 +111,161 @@ const HomeScreen: React.FC = () => {
     ]).start();
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setBalance('₹1,234.56');
-      setRefreshing(false);
-    }, 1500);
-  };
+
 
   const quickActions: QuickAction[] = [
     {
       id: 'send',
       title: 'Send Money',
-      icon: 'arrow-up-circle',
-      gradient: ['#FF6B6B', '#FF8E8E'],
+      icon: 'arrow-up',
+      gradient: ['#2c2c2c', '#2c2c2c'],
       screen: 'SendMoney',
     },
     {
       id: 'request',
       title: 'Request',
-      icon: 'arrow-down-circle',
-      gradient: ['#4ECDC4', '#6FE7DD'],
+      icon: 'arrow-down',
+      gradient: ['#404040', '#404040'],
       screen: 'RequestMoney',
     },
     {
       id: 'scan',
       title: 'Scan QR',
       icon: 'qrcode-scan',
-      gradient: ['#95E1D3', '#AAF683'],
+      gradient: ['#2c2c2c', '#2c2c2c'],
       screen: 'SendMoney',
+    },
+    {
+      id: 'balance',
+      title: 'Balance',
+      icon: 'wallet-outline',
+      gradient: ['#404040', '#404040'],
+      screen: 'Home',
+    },
+    {
+      id: 'transactions',
+      title: 'History',
+      icon: 'clock-outline',
+      gradient: ['#2c2c2c', '#2c2c2c'],
+      screen: 'Home',
+    },
+    {
+      id: 'pending',
+      title: 'Pending',
+      icon: 'progress-clock',
+      gradient: ['#404040', '#404040'],
+      screen: 'Home',
+    },
+    {
+      id: 'profile',
+      title: 'Profile',
+      icon: 'account-outline',
+      gradient: ['#2c2c2c', '#2c2c2c'],
+      screen: 'Home',
+    },
+    {
+      id: 'upipin',
+      title: 'UPI PIN',
+      icon: 'lock-outline',
+      gradient: ['#404040', '#404040'],
+      screen: 'Home',
     },
   ];
 
-  const recentTransactions = [
-    { id: '1', type: 'received', amount: '+₹500', from: 'Rajesh Kumar', time: '2h ago', icon: 'arrow-down', color: '#4ECDC4' },
-    { id: '2', type: 'sent', amount: '-₹200', to: 'Grocery Store', time: '5h ago', icon: 'arrow-up', color: '#FF6B6B' },
-    { id: '3', type: 'received', amount: '+₹1,000', from: 'Salary', time: '1d ago', icon: 'arrow-down', color: '#4ECDC4' },
-  ];
+  const handleActionPress = async (action: QuickAction) => {
+    switch (action.id) {
+      case 'send':
+        navigation.navigate('SendMoney', {});
+        break;
+      case 'request':
+        navigation.navigate('RequestMoney');
+        break;
+      case 'scan':
+        setShowQRScanner(true);
+        break;
+      case 'balance':
+        await dialUssd(USSD_CODES.CHECK_BALANCE, setLoading);
+        break;
+      case 'transactions':
+        await dialUssd(USSD_CODES.TRANSACTIONS, setLoading);
+        break;
+      case 'pending':
+        await dialUssd(USSD_CODES.PENDING_REQUESTS, setLoading);
+        break;
+      case 'profile':
+        await dialUssd(USSD_CODES.PROFILE, setLoading);
+        break;
+      case 'upipin':
+        await dialUssd(USSD_CODES.UPI_PIN, setLoading);
+        break;
+      default:
+        navigation.navigate(action.screen as any);
+    }
+  };
+
+
 
   if (isLocked) {
     return (
       <View style={styles.lockContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#1A1A2E" />
-        <LinearGradient
-          colors={['#1A1A2E', '#16213E', '#0F3460']}
-          style={styles.lockGradient}
-        >
+        <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
+        <View style={styles.lockGradient}>
           <View style={styles.lockContent}>
-            <Icon name="shield-lock" size={100} color="#fff" />
+            <Icon name="shield-lock-outline" size={80} color="#2c2c2c" />
             <Text style={styles.lockTitle}>OfflineUPI</Text>
             <Text style={styles.lockSubtitle}>Secure Payment App</Text>
             
-            <TouchableOpacity
-              style={styles.unlockButton}
-              onPress={handleBiometricAuth}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#2c2c2c" />
+                <Text style={styles.loadingText}>
+                  {biometryType ? `Authenticating with ${biometryType}...` : 'Authenticating...'}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.authOptions}>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={handleBiometricAuth}
+                >
                   <Icon name="fingerprint" size={24} color="#fff" />
-                  <Text style={styles.unlockButtonText}>
-                    {biometryType ? `Unlock with ${biometryType}` : 'Unlock'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+                  <Text style={styles.retryButtonText}>Try Again</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.skipButton}
+                  onPress={skipBiometric}
+                >
+                  <Text style={styles.skipButtonText}>Skip Authentication</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
-        </LinearGradient>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#5f4dee" />
+      <StatusBar barStyle="dark-content" backgroundColor="#fafafa" />
       
       {/* Header with Balance Card */}
-      <LinearGradient
-        colors={['#5f4dee', '#7c5fe8', '#9b7ded']}
-        style={styles.header}
-      >
+      <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.greeting}>Welcome back!</Text>
-            <Text style={styles.userName}>UPI User</Text>
+            <Text style={styles.greeting}>Welcome to</Text>
+            <Text style={styles.userName}>Offline UPI</Text>
           </View>
           <TouchableOpacity style={styles.lockIcon} onPress={() => setIsLocked(true)}>
-            <Icon name="lock" size={24} color="#fff" />
+            <Icon name="lock-outline" size={24} color="#2c2c2c" />
           </TouchableOpacity>
         </View>
-
-        <Animated.View
-          style={[
-            styles.balanceCard,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          <LinearGradient
-            colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
-            style={styles.balanceCardGradient}
-          >
-            <View style={styles.balanceHeader}>
-              <Text style={styles.balanceLabel}>Available Balance</Text>
-              <Icon name="eye" size={20} color="#fff" />
-            </View>
-            <Text style={styles.balanceAmount}>{balance}</Text>
-            <View style={styles.balanceFooter}>
-              <View style={styles.balanceAction}>
-                <Icon name="bank" size={16} color="#fff" />
-                <Text style={styles.balanceActionText}>Link Bank</Text>
-              </View>
-              <TouchableOpacity onPress={onRefresh}>
-                <Icon name="refresh" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </Animated.View>
-      </LinearGradient>
+      </View>
 
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
       >
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -244,21 +288,17 @@ const HomeScreen: React.FC = () => {
               >
                 <TouchableOpacity
                   style={styles.actionCard}
-                  onPress={() => {
-                    if (action.screen === 'SendMoney') {
-                      navigation.navigate('SendMoney', {});
-                    } else {
-                      navigation.navigate(action.screen as any);
-                    }
-                  }}
+                  onPress={() => handleActionPress(action)}
                   activeOpacity={0.7}
+                  disabled={loading}
                 >
-                  <LinearGradient
-                    colors={action.gradient}
-                    style={styles.actionGradient}
-                  >
-                    <Icon name={action.icon} size={32} color="#fff" />
-                  </LinearGradient>
+                  <View style={styles.actionGradient}>
+                    {loading && (action.id === 'balance' || action.id === 'transactions' || action.id === 'pending' || action.id === 'profile' || action.id === 'upipin') ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Icon name={action.icon} size={28} color="#fff" />
+                    )}
+                  </View>
                   <Text style={styles.actionTitle}>{action.title}</Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -266,53 +306,27 @@ const HomeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Recent Transactions */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {recentTransactions.map((transaction, index) => (
-            <Animated.View
-              key={transaction.id}
-              style={[
-                styles.transactionCard,
-                {
-                  opacity: fadeAnim,
-                  transform: [
-                    {
-                      translateX: slideAnim.interpolate({
-                        inputRange: [0, 50],
-                        outputRange: [0, index % 2 === 0 ? -50 : 50],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <View style={[styles.transactionIcon, { backgroundColor: transaction.color + '20' }]}>
-                <Icon name={transaction.icon} size={24} color={transaction.color} />
-              </View>
-              <View style={styles.transactionDetails}>
-                <Text style={styles.transactionName}>
-                  {transaction.type === 'received' ? transaction.from : transaction.to}
-                </Text>
-                <Text style={styles.transactionTime}>{transaction.time}</Text>
-              </View>
-              <Text
-                style={[
-                  styles.transactionAmount,
-                  { color: transaction.type === 'received' ? '#4ECDC4' : '#FF6B6B' },
-                ]}
-              >
-                {transaction.amount}
+        {/* USSD Info Banner */}
+        <Animated.View
+          style={[
+            styles.featureBanner,
+            {
+              opacity: fadeAnim,
+            },
+          ]}
+        >
+          <View style={styles.bannerGradient}>
+            <Icon name="phone-outline" size={32} color="#2c2c2c" />
+            <View style={styles.bannerText}>
+              <Text style={styles.bannerTitle}>Powered by *99#</Text>
+              <Text style={styles.bannerSubtitle}>
+                Offline UPI via USSD - Works without internet
               </Text>
-            </Animated.View>
-          ))}
-        </View>
+            </View>
+          </View>
+        </Animated.View>
+
+
 
         {/* Features Banner */}
         <Animated.View
@@ -323,22 +337,26 @@ const HomeScreen: React.FC = () => {
             },
           ]}
         >
-          <LinearGradient
-            colors={['#FFA07A', '#FF7F50']}
-            style={styles.bannerGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Icon name="shield-check" size={40} color="#fff" />
+          <View style={styles.bannerGradient}>
+            <Icon name="shield-check-outline" size={32} color="#2c2c2c" />
             <View style={styles.bannerText}>
               <Text style={styles.bannerTitle}>100% Secure</Text>
               <Text style={styles.bannerSubtitle}>
                 Protected with biometric authentication
               </Text>
             </View>
-          </LinearGradient>
+          </View>
         </Animated.View>
       </ScrollView>
+
+      <QRScanner
+        visible={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScan={(upiId) => {
+          setShowQRScanner(false);
+          navigation.navigate('SendMoney', { upiId });
+        }}
+      />
     </View>
   );
 };
@@ -346,7 +364,7 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#fafafa',
   },
   lockContainer: {
     flex: 1,
@@ -355,6 +373,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fafafa',
   },
   lockContent: {
     alignItems: 'center',
@@ -362,38 +381,59 @@ const styles = StyleSheet.create({
   },
   lockTitle: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: '700',
+    color: '#2c2c2c',
     marginTop: 30,
+    letterSpacing: -0.5,
   },
   lockSubtitle: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 10,
+    color: '#6b6b6b',
+    marginTop: 12,
     marginBottom: 50,
+    fontWeight: '400',
   },
-  unlockButton: {
+  loadingContainer: {
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  loadingText: {
+    color: '#2c2c2c',
+    fontSize: 15,
+    marginTop: 16,
+  },
+  authOptions: {
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  retryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#2c2c2c',
     paddingVertical: 16,
     paddingHorizontal: 32,
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 12,
     gap: 12,
+    marginBottom: 16,
   },
-  unlockButtonText: {
+  retryButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
+  skipButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  skipButtonText: {
+    color: '#6b6b6b',
+    fontSize: 14,
+  },
   header: {
-    paddingTop: 20,
-    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingHorizontal: 24,
     paddingBottom: 30,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    backgroundColor: '#fafafa',
   },
   headerTop: {
     flexDirection: 'row',
@@ -403,13 +443,15 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    color: '#6b6b6b',
+    fontWeight: '400',
   },
   userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#2c2c2c',
     marginTop: 4,
+    letterSpacing: -0.5,
   },
   lockIcon: {
     padding: 8,
@@ -456,7 +498,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    marginTop: -10,
   },
   section: {
     paddingHorizontal: 20,
@@ -470,14 +511,15 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1A1A2E',
-    marginBottom: 16,
+    fontWeight: '700',
+    color: '#2c2c2c',
+    marginBottom: 18,
+    letterSpacing: -0.3,
   },
   seeAll: {
     fontSize: 14,
-    color: '#5f4dee',
-    fontWeight: '600',
+    color: '#6b6b6b',
+    fontWeight: '500',
   },
   quickActionsGrid: {
     flexDirection: 'row',
@@ -486,30 +528,35 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionCard: {
-    width: (width - 56) / 2,
+    width: (width - 56) / 3,
     alignItems: 'center',
     backgroundColor: '#fff',
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#f5f5f5',
   },
   actionGradient: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
+    backgroundColor: '#2c2c2c',
   },
   actionTitle: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#1A1A2E',
+    color: '#2c2c2c',
     textAlign: 'center',
+    lineHeight: 14,
   },
   transactionCard: {
     flexDirection: 'row',
@@ -538,12 +585,12 @@ const styles = StyleSheet.create({
   transactionName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A2E',
+    color: '#2c2c2c',
     marginBottom: 4,
   },
   transactionTime: {
     fontSize: 13,
-    color: '#999',
+    color: '#9e9e9e',
   },
   transactionAmount: {
     fontSize: 16,
@@ -551,13 +598,21 @@ const styles = StyleSheet.create({
   },
   featureBanner: {
     marginHorizontal: 20,
-    marginVertical: 24,
+    marginVertical: 16,
     borderRadius: 16,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#f5f5f5',
   },
   bannerGradient: {
     flexDirection: 'row',
-    padding: 20,
+    padding: 24,
     alignItems: 'center',
     gap: 16,
   },
@@ -565,14 +620,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bannerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#2c2c2c',
     marginBottom: 4,
+    letterSpacing: -0.3,
   },
   bannerSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    color: '#6b6b6b',
+    fontWeight: '400',
+    lineHeight: 18,
   },
 });
 

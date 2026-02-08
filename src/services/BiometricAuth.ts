@@ -25,13 +25,20 @@ export const authenticateWithBiometric = async (
   promptMessage: string = 'Authenticate to continue'
 ): Promise<boolean> => {
   try {
+    // Add a small delay to ensure FragmentActivity is ready
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     const { success } = await rnBiometrics.simplePrompt({
       promptMessage,
       cancelButtonText: 'Cancel',
     });
     return success;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Biometric authentication error:', error);
+    // If FragmentActivity is null, return false instead of throwing
+    if (error?.message?.includes('FragmentActivity')) {
+      console.warn('FragmentActivity not ready, skipping biometric auth');
+    }
     return false;
   }
 };

@@ -1,5 +1,5 @@
 /**
- * Modern Send Money Screen with Interactive UI
+ * Modern Send Money Screen with USSD Integration
  */
 
 import React, { useState, useEffect } from 'react';
@@ -15,21 +15,26 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  Vibration,
+  Clipboard,
+  ToastAndroid,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { USSD_CODES, dialUssd } from '../services/ussdService';
 
 type SendMoneyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SendMoney'>;
+type SendMoneyScreenRouteProp = RouteProp<RootStackParamList, 'SendMoney'>;
 
 const SendMoneyScreen: React.FC = () => {
   const navigation = useNavigation<SendMoneyScreenNavigationProp>();
+  const route = useRoute<SendMoneyScreenRouteProp>();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-  const [selectedContact, setSelectedContact] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fadeAnim = useState(new Animated.Value(0))[0];
@@ -48,31 +53,37 @@ const SendMoneyScreen: React.FC = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+
+    // Pre-fill with scanned UPI ID if available
+    if (route.params?.upiId) {
+      setPhoneNumber(route.params.upiId);
+    }
+  }, [route.params?.upiId]);
 
   const quickAmounts = [100, 200, 500, 1000, 2000, 5000];
-
-  const recentContacts = [
-    { id: '1', name: 'Rajesh Kumar', phone: '+91 98765 43210', avatar: '👨' },
-    { id: '2', name: 'Priya Sharma', phone: '+91 98123 45678', avatar: '👩' },
-    { id: '3', name: 'Amit Patel', phone: '+91 97654 32109', avatar: '👨' },
-  ];
 
   const handleSendMoney = async () => {
     if (!phoneNumber || !amount) {
       return;
     }
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      navigation.goBack();
-    }, 2000);
-  };
 
-  const selectContact = (contact: typeof recentContacts[0]) => {
-    setPhoneNumber(contact.phone);
-    setSelectedContact(contact.id);
+    try {
+      Vibration.vibrate([0, 100, 100, 100]);
+      
+      // Check if it's a UPI ID (contains @)
+      if (phoneNumber.includes('@')) {
+        // Copy UPI ID and show toast
+        await Clipboard.setString(phoneNumber);
+        ToastAndroid.show('✅ UPI ID IS COPIED - Paste in dialog!', ToastAndroid.LONG);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await dialUssd(USSD_CODES.SEND_VIA_UPI, setLoading);
+      } else {
+        // Mobile number - no vibration, no copy
+        await dialUssd(USSD_CODES.SEND_VIA_MOBILE(phoneNumber, amount), setLoading);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   const selectAmount = (amt: number) => {
@@ -81,7 +92,7 @@ const SendMoneyScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#5f4dee" />
+      <StatusBar barStyle="dark-content" backgroundColor="#fafafa" />
       
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -100,52 +111,19 @@ const SendMoneyScreen: React.FC = () => {
               },
             ]}
           >
-            {/* Recent Contacts */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent Contacts</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.contactsScroll}
-              >
-                {recentContacts.map((contact) => (
-                  <TouchableOpacity
-                    key={contact.id}
-                    style={[
-                      styles.contactCard,
-                      selectedContact === contact.id && styles.contactCardSelected,
-                    ]}
-                    onPress={() => selectContact(contact)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.contactAvatar}>
-                      <Text style={styles.contactAvatarText}>{contact.avatar}</Text>
-                    </View>
-                    <Text style={styles.contactName}>{contact.name}</Text>
-                    <Text style={styles.contactPhone}>{contact.phone}</Text>
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity style={styles.contactCard} activeOpacity={0.7}>
-                  <View style={[styles.contactAvatar, styles.addContact]}>
-                    <Icon name="plus" size={24} color="#5f4dee" />
-                  </View>
-                  <Text style={styles.contactName}>Add New</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-
             {/* Phone Number Input */}
             <View style={styles.section}>
               <Text style={styles.label}>Mobile Number / UPI ID</Text>
               <View style={styles.inputCard}>
-                <Icon name="phone" size={20} color="#5f4dee" style={styles.inputIcon} />
+                <Icon name="phone-outline" size={20} color="#2c2c2c" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter mobile number or UPI ID"
                   placeholderTextColor="#999"
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
-                  keyboardType="phone-pad"
+                  keyboardType="default"
+                  autoCapitalize="none"
                 />
                 {phoneNumber.length > 0 && (
                   <TouchableOpacity onPress={() => setPhoneNumber('')}>
@@ -199,7 +177,7 @@ const SendMoneyScreen: React.FC = () => {
             <View style={styles.section}>
               <Text style={styles.label}>Add Note (Optional)</Text>
               <View style={styles.inputCard}>
-                <Icon name="note-text" size={20} color="#5f4dee" style={styles.inputIcon} />
+                <Icon name="note-text-outline" size={20} color="#2c2c2c" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter note or message"
@@ -241,20 +219,26 @@ const SendMoneyScreen: React.FC = () => {
             disabled={!phoneNumber || !amount || loading}
             activeOpacity={0.8}
           >
-            <LinearGradient
-              colors={phoneNumber && amount ? ['#5f4dee', '#7b68ee'] : ['#ccc', '#999']}
-              style={styles.sendButtonGradient}
+            <View
+              style={[styles.sendButtonGradient, phoneNumber && amount ? styles.sendButtonActive : styles.sendButtonInactive]}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Icon name="send" size={24} color="#fff" />
-                  <Text style={styles.sendButtonText}>Send Money</Text>
+                  <Icon name="send-outline" size={24} color="#fff" />
+                  <Text style={styles.sendButtonText}>
+                    {phoneNumber.includes('@') ? 'Send via UPI ID (*99#)' : 'Send via Mobile (*99#)'}
+                  </Text>
                 </>
               )}
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
+          <Text style={styles.helperText}>
+            {phoneNumber.includes('@') 
+              ? 'UPI ID will be copied - paste it in the *99# dialog' 
+              : 'Opens *99# USSD with mobile & amount filled'}
+          </Text>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -264,7 +248,7 @@ const SendMoneyScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fafafa',
   },
   flex: {
     flex: 1,
@@ -273,7 +257,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   content: {
-    padding: 20,
+    padding: 24,
   },
   section: {
     marginBottom: 24,
@@ -281,26 +265,29 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A1A2E',
-    marginBottom: 12,
+    color: '#2c2c2c',
+    marginBottom: 14,
+    letterSpacing: -0.3,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#555',
-    marginBottom: 8,
+    color: '#2c2c2c',
+    marginBottom: 10,
   },
   inputCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 14,
+    padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   inputIcon: {
     marginRight: 12,
@@ -308,7 +295,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1A1A2E',
+    color: '#2c2c2c',
     padding: 0,
   },
   amountInput: {
@@ -318,7 +305,7 @@ const styles = StyleSheet.create({
   currencySymbol: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#5f4dee',
+    color: '#2c2c2c',
     marginRight: 8,
   },
   quickAmounts: {
@@ -329,20 +316,25 @@ const styles = StyleSheet.create({
   },
   quickAmountBtn: {
     backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#e8e8e8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   quickAmountBtnSelected: {
-    backgroundColor: '#5f4dee',
-    borderColor: '#5f4dee',
+    backgroundColor: '#2c2c2c',
+    borderColor: '#2c2c2c',
   },
   quickAmountText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#555',
+    color: '#6b6b6b',
   },
   quickAmountTextSelected: {
     color: '#fff',
@@ -365,15 +357,15 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   contactCardSelected: {
-    backgroundColor: '#f0ebff',
+    backgroundColor: '#f0f0f0',
     borderWidth: 2,
-    borderColor: '#5f4dee',
+    borderColor: '#2c2c2c',
   },
   contactAvatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#f0ebff',
+    backgroundColor: '#f5f5f5',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -387,29 +379,31 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1A1A2E',
+    color: '#2c2c2c',
     textAlign: 'center',
     marginBottom: 4,
   },
   contactPhone: {
     fontSize: 10,
-    color: '#999',
+    color: '#9e9e9e',
     textAlign: 'center',
   },
   summaryCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 14,
     padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1A2E',
+    color: '#2c2c2c',
     marginBottom: 16,
   },
   summaryRow: {
@@ -419,26 +413,26 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#6b6b6b',
   },
   summaryValue: {
     fontSize: 14,
-    color: '#1A1A2E',
+    color: '#2c2c2c',
   },
   summaryValueBold: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1A1A2E',
+    color: '#2c2c2c',
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#e8e8e8',
     marginVertical: 12,
   },
   summaryTotal: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#5f4dee',
+    color: '#2c2c2c',
   },
   bottomBar: {
     position: 'absolute',
@@ -448,10 +442,10 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#e8e8e8',
   },
   sendButton: {
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   sendButtonDisabled: {
@@ -464,10 +458,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  sendButtonActive: {
+    backgroundColor: '#2c2c2c',
+  },
+  sendButtonInactive: {
+    backgroundColor: '#d4d4d4',
+  },
   sendButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: 'bold',
     color: '#fff',
+  },
+  helperText: {
+    marginTop: 12,
+    fontSize: 13,
+    color: '#6b6b6b',
+    textAlign: 'center',
   },
 });
 

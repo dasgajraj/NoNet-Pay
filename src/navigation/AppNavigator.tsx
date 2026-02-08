@@ -31,11 +31,11 @@ const AppNavigator: React.FC = () => {
           options={{
             headerShown: true,
             headerStyle: {
-              backgroundColor: '#5f4dee',
+              backgroundColor: '#fafafa',
               elevation: 0,
               shadowOpacity: 0,
             },
-            headerTintColor: '#fff',
+            headerTintColor: '#2c2c2c',
             headerTitle: 'Send Money',
             headerTitleStyle: {
               fontWeight: 'bold',
@@ -49,11 +49,11 @@ const AppNavigator: React.FC = () => {
           options={{
             headerShown: true,
             headerStyle: {
-              backgroundColor: '#5f4dee',
+              backgroundColor: '#fafafa',
               elevation: 0,
               shadowOpacity: 0,
             },
-            headerTintColor: '#fff',
+            headerTintColor: '#2c2c2c',
             headerTitle: 'Request Money',
             headerTitleStyle: {
               fontWeight: 'bold',
