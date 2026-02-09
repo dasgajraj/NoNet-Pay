@@ -1,8 +1,8 @@
 /**
- * Modern Request Money Screen with USSD Integration
+ * NoNet Pay - Request Money Screen
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,23 +18,24 @@ import {
   ToastAndroid,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { USSD_CODES, dialUssd } from '../services/ussdService';
+import { useTheme } from '../context/ThemeContext';
 
 type RequestMoneyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'RequestMoney'>;
 
 const RequestMoneyScreen: React.FC = () => {
   const navigation = useNavigation<RequestMoneyScreenNavigationProp>();
+  const { theme } = useTheme();
   const [amount, setAmount] = useState('');
   const [upiId, setUpiId] = useState('');
   const [inputType, setInputType] = useState<'upi' | 'mobile'>('upi');
   const [loading, setLoading] = useState(false);
 
-  const fadeAnim = useState(new Animated.Value(0))[0];
-  const slideAnim = useState(new Animated.Value(30))[0];
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
     Animated.parallel([

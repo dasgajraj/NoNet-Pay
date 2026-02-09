@@ -1,8 +1,8 @@
 /**
- * Modern Send Money Screen with USSD Integration
+ * NoNet Pay - Send Money Screen
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,11 +20,11 @@ import {
   ToastAndroid,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { USSD_CODES, dialUssd } from '../services/ussdService';
+import { useTheme } from '../context/ThemeContext';
 
 type SendMoneyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SendMoney'>;
 type SendMoneyScreenRouteProp = RouteProp<RootStackParamList, 'SendMoney'>;
@@ -32,13 +32,14 @@ type SendMoneyScreenRouteProp = RouteProp<RootStackParamList, 'SendMoney'>;
 const SendMoneyScreen: React.FC = () => {
   const navigation = useNavigation<SendMoneyScreenNavigationProp>();
   const route = useRoute<SendMoneyScreenRouteProp>();
+  const { theme } = useTheme();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const fadeAnim = useState(new Animated.Value(0))[0];
-  const slideAnim = useState(new Animated.Value(30))[0];
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -91,8 +92,11 @@ const SendMoneyScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fafafa" />
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <StatusBar
+        barStyle={theme.dark ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.colors.background}
+      />
       
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -113,13 +117,13 @@ const SendMoneyScreen: React.FC = () => {
           >
             {/* Phone Number Input */}
             <View style={styles.section}>
-              <Text style={styles.label}>Mobile Number / UPI ID</Text>
-              <View style={styles.inputCard}>
-                <Icon name="phone-outline" size={20} color="#2c2c2c" style={styles.inputIcon} />
+              <Text style={[styles.label, { color: theme.colors.text }]}>Mobile Number / UPI ID</Text>
+              <View style={[styles.inputCard, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
+                <Icon name="phone-outline" size={20} color={theme.colors.primary} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.colors.text }]}
                   placeholder="Enter mobile number or UPI ID"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={theme.colors.placeholder}
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
                   keyboardType="default"
@@ -127,7 +131,7 @@ const SendMoneyScreen: React.FC = () => {
                 />
                 {phoneNumber.length > 0 && (
                   <TouchableOpacity onPress={() => setPhoneNumber('')}>
-                    <Icon name="close-circle" size={20} color="#999" />
+                    <Icon name="close-circle" size={20} color={theme.colors.placeholder} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -135,13 +139,13 @@ const SendMoneyScreen: React.FC = () => {
 
             {/* Amount Input */}
             <View style={styles.section}>
-              <Text style={styles.label}>Amount</Text>
-              <View style={styles.inputCard}>
-                <Text style={styles.currencySymbol}>₹</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>Amount</Text>
+              <View style={[styles.inputCard, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
+                <Text style={[styles.currencySymbol, { color: theme.colors.text }]}>₹</Text>
                 <TextInput
-                  style={[styles.input, styles.amountInput]}
+                  style={[styles.input, styles.amountInput, { color: theme.colors.text }]}
                   placeholder="0"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={theme.colors.placeholder}
                   value={amount}
                   onChangeText={setAmount}
                   keyboardType="numeric"
@@ -155,7 +159,8 @@ const SendMoneyScreen: React.FC = () => {
                     key={amt}
                     style={[
                       styles.quickAmountBtn,
-                      amount === amt.toString() && styles.quickAmountBtnSelected,
+                      { borderColor: theme.colors.border },
+                      amount === amt.toString() && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
                     ]}
                     onPress={() => selectAmount(amt)}
                     activeOpacity={0.7}
@@ -163,7 +168,8 @@ const SendMoneyScreen: React.FC = () => {
                     <Text
                       style={[
                         styles.quickAmountText,
-                        amount === amt.toString() && styles.quickAmountTextSelected,
+                        { color: theme.colors.text },
+                        amount === amt.toString() && { color: theme.colors.buttonText },
                       ]}
                     >
                       ₹{amt}
@@ -175,13 +181,13 @@ const SendMoneyScreen: React.FC = () => {
 
             {/* Note Input */}
             <View style={styles.section}>
-              <Text style={styles.label}>Add Note (Optional)</Text>
-              <View style={styles.inputCard}>
-                <Icon name="note-text-outline" size={20} color="#2c2c2c" style={styles.inputIcon} />
+              <Text style={[styles.label, { color: theme.colors.text }]}>Add Note (Optional)</Text>
+              <View style={[styles.inputCard, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
+                <Icon name="note-text-outline" size={20} color={theme.colors.primary} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.colors.text }]}
                   placeholder="Enter note or message"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={theme.colors.placeholder}
                   value={note}
                   onChangeText={setNote}
                   multiline
