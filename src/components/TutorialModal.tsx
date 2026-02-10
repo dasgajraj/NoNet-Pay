@@ -3,7 +3,7 @@ import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Animated, Dimen
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../constants/styles';
 
-const TUTORIAL_KEY = '@offline_upi_tutorial_shown';
+const TUTORIAL_KEY = '@nonetpay_tutorial_shown';
 
 interface TutorialModalProps {
   visible: boolean;

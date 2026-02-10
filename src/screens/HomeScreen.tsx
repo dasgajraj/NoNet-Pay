@@ -316,7 +316,7 @@ const HomeScreen: React.FC = () => {
             <View style={styles.bannerText}>
               <Text style={[styles.bannerTitle, { color: theme.colors.text }]}>Powered by *99#</Text>
               <Text style={[styles.bannerSubtitle, { color: theme.colors.textSecondary }]}>
-                Offline UPI via USSD - Works without internet
+                NoNet Pay via USSD - Works without internet
               </Text>
             </View>
           </View>

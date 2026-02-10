@@ -1,4 +1,4 @@
-package com.offlineupi
+package com.nonetpay
 
 import android.content.Context
 import android.content.Intent

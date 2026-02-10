@@ -1,4 +1,4 @@
-package com.offlineupi
+package com.nonetpay
 
 import android.app.Application
 import com.facebook.react.PackageList

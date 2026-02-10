@@ -1,10 +1,10 @@
-# OfflineUPI
+# NoNet Pay
 
 A mobile payment solution for sending and receiving money through UPI without requiring internet connectivity.
 
 ## Overview
 
-Traditional UPI payment apps require an active internet connection to process transactions. This becomes a challenge in areas with poor network coverage or when data services are unavailable. OfflineUPI solves this problem by leveraging USSD-based payments, which work over basic cellular networks without needing mobile data or WiFi.
+Traditional UPI payment apps require an active internet connection to process transactions. This becomes a challenge in areas with poor network coverage or when data services are unavailable. NoNet Pay solves this problem by leveraging USSD-based payments, which work over basic cellular networks without needing mobile data or WiFi.
 
 ## The Challenge
 
@@ -20,7 +20,7 @@ Most users find the native USSD experience cumbersome, which limits adoption des
 
 ## The Solution
 
-OfflineUPI simplifies the entire process by providing a user-friendly interface that handles the complexity behind the scenes. Instead of memorizing codes or navigating menus manually, users interact with a straightforward mobile app that automates the technical aspects while maintaining the offline functionality.
+NoNet Pay simplifies the entire process by providing a user-friendly interface that handles the complexity behind the scenes. Instead of memorizing codes or navigating menus manually, users interact with a straightforward mobile app that automates the technical aspects while maintaining the offline functionality.
 
 ## Key Features
 
@@ -101,15 +101,15 @@ The app requires the following permissions to function:
 1. Download the APK file to your Android device
 2. Enable "Install from Unknown Sources" in your device settings
 3. Open the APK file and follow installation prompts
-4. Launch OfflineUPI from your app drawer
+4. Launch NoNet Pay from your app drawer
 
 ### First-Time Setup
 
 After installation, enable the Accessibility Service:
 
-1. Open OfflineUPI and navigate to Settings
+1. Open NoNet Pay and navigate to Settings
 2. Tap on "Enable Accessibility Service"
-3. Find OfflineUPI in the accessibility services list
+3. Find NoNet Pay in the accessibility services list
 4. Toggle the switch to enable
 5. Confirm the permission dialog
 
@@ -164,7 +164,7 @@ The app is now ready to use.
 
 If the automation isn't functioning:
 1. Go to device Settings > Accessibility
-2. Find OfflineUPI in the list
+2. Find NoNet Pay in the list
 3. Ensure the service is enabled
 4. If enabled, toggle it off and on again
 5. Restart the app
@@ -176,12 +176,12 @@ This can happen if:
 - Certain manufacturers block automated USSD dialing
 - Your carrier has restrictions
 
-Solution: Check your device's phone app permissions and ensure OfflineUPI has permission to make calls.
+Solution: Check your device's phone app permissions and ensure NoNet Pay has permission to make calls.
 
 ### QR Scanner Not Opening
 
 If the camera doesn't open:
-1. Go to device Settings > Apps > OfflineUPI
+1. Go to device Settings > Apps > NoNet Pay
 2. Check if Camera permission is granted
 3. Grant the permission if not already enabled
 4. Restart the app
@@ -195,7 +195,7 @@ USSD transactions typically take 5-15 seconds. If experiencing delays:
 
 ## Security and Privacy
 
-OfflineUPI prioritizes your security:
+NoNet Pay prioritizes your security:
 
 - No transaction data is stored on the device
 - No internet connection means no data transmission

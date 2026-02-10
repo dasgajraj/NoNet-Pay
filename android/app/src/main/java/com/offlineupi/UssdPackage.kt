@@ -1,4 +1,4 @@
-package com.offlineupi
+package com.nonetpay
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
