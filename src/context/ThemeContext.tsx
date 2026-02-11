@@ -46,21 +46,21 @@ const lightTheme: Theme = {
 const darkTheme: Theme = {
   dark: true,
   colors: {
-    background: '#121212',
-    surface: '#1e1e1e',
-    primary: '#bb86fc',
-    secondary: '#03dac6',
-    text: '#ffffff',
-    textSecondary: '#b0b0b0',
-    border: '#2c2c2c',
-    error: '#cf6679',
-    success: '#81c784',
-    warning: '#ffb74d',
-    card: '#1e1e1e',
-    cardShadow: 'rgba(0, 0, 0, 0.5)',
-    buttonText: '#000000',
-    inputBackground: '#2c2c2c',
-    placeholder: '#757575',
+    background: '#121212', // Deep charcoal
+    surface: 'rgba(30, 30, 30, 0.7)', // Glassmorphism surface
+    primary: '#7C3AED', // Royal Purple
+    secondary: '#06D6A0', // Neon Teal
+    text: '#FFFFFF',
+    textSecondary: '#B0B0B0',
+    border: 'rgba(255, 255, 255, 0.08)',
+    error: '#EF4444',
+    success: '#10B981',
+    warning: '#F59E0B',
+    card: 'rgba(45, 45, 50, 0.65)', // Enhanced glassmorphism
+    cardShadow: 'rgba(124, 58, 237, 0.25)',
+    buttonText: '#FFFFFF',
+    inputBackground: 'rgba(55, 55, 60, 0.6)',
+    placeholder: '#808080',
   },
 };
 

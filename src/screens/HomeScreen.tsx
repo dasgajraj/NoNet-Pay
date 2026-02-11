@@ -1,5 +1,6 @@
 /**
  * NoNet Pay - Home Screen
+ * High-Fidelity Fintech UI with Glassmorphism
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -17,32 +18,34 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList, MainTabParamList } from '../navigation/AppNavigator';
 import { USSD_CODES, dialUssd, requestPermissions } from '../services/ussdService';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import {
   checkBiometricAvailability,
   authenticateWithBiometric,
   getBiometricName,
 } from '../services/BiometricAuth';
 import QRScanner from '../components/QRScanner';
+import LinearGradient from 'react-native-linear-gradient';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
+type HomeScreenNavigationProp = StackNavigationProp<MainTabParamList, 'Home'>;
 
 interface QuickAction {
   id: string;
   title: string;
   icon: string;
   gradient: string[];
-  screen: keyof RootStackParamList;
+  screen: keyof MainTabParamList;
 }
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { theme } = useTheme();
-  const [isLocked, setIsLocked] = useState(true);
+  const { isLocked, setIsLocked } = useAuth();
   const [biometryType, setBiometryType] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
@@ -108,51 +111,16 @@ const HomeScreen: React.FC = () => {
 
   const quickActions: QuickAction[] = [
     {
-      id: 'send',
-      title: 'Send Money',
-      icon: 'arrow-up',
-      gradient: [theme.colors.primary, theme.colors.primary],
-      screen: 'SendMoney',
-    },
-    {
-      id: 'request',
-      title: 'Request',
-      icon: 'arrow-down',
-      gradient: [theme.colors.secondary, theme.colors.secondary],
-      screen: 'RequestMoney',
-    },
-    {
-      id: 'scan',
-      title: 'Scan QR',
-      icon: 'qrcode-scan',
-      gradient: [theme.colors.primary, theme.colors.primary],
-      screen: 'SendMoney',
-    },
-    {
       id: 'balance',
-      title: 'Balance',
+      title: 'Check Balance',
       icon: 'wallet-outline',
-      gradient: [theme.colors.secondary, theme.colors.secondary],
+      gradient: [theme.colors.primary, theme.colors.primary],
       screen: 'Home',
     },
     {
       id: 'transactions',
-      title: 'History',
-      icon: 'clock-outline',
-      gradient: [theme.colors.primary, theme.colors.primary],
-      screen: 'Home',
-    },
-    {
-      id: 'pending',
-      title: 'Pending',
-      icon: 'progress-clock',
-      gradient: [theme.colors.secondary, theme.colors.secondary],
-      screen: 'Home',
-    },
-    {
-      id: 'profile',
-      title: 'Profile',
-      icon: 'account-outline',
+      title: 'Transaction History',
+      icon: 'history',
       gradient: [theme.colors.primary, theme.colors.primary],
       screen: 'Home',
     },
@@ -160,6 +128,41 @@ const HomeScreen: React.FC = () => {
       id: 'upipin',
       title: 'UPI PIN',
       icon: 'lock-outline',
+      gradient: [theme.colors.secondary, theme.colors.secondary],
+      screen: 'Home',
+    },
+    {
+      id: 'request',
+      title: 'Request Money',
+      icon: 'cash-refund',
+      gradient: [theme.colors.secondary, theme.colors.secondary],
+      screen: 'RequestMoney',
+    },
+    {
+      id: 'send',
+      title: 'Send Money',
+      icon: 'send-outline',
+      gradient: [theme.colors.primary, theme.colors.primary],
+      screen: 'SendMoney',
+    },
+    {
+      id: 'pending',
+      title: 'Pending',
+      icon: 'clock-time-four-outline',
+      gradient: [theme.colors.secondary, theme.colors.secondary],
+      screen: 'Home',
+    },
+    {
+      id: 'profile',
+      title: 'My Profile',
+      icon: 'account-outline',
+      gradient: [theme.colors.primary, theme.colors.primary],
+      screen: 'Home',
+    },
+    {
+      id: 'support',
+      title: 'Help & Support',
+      icon: 'help-circle-outline',
       gradient: [theme.colors.secondary, theme.colors.secondary],
       screen: 'Home',
     },
@@ -206,7 +209,7 @@ const HomeScreen: React.FC = () => {
           backgroundColor={theme.colors.background}
         />
         <View style={styles.lockContent}>
-          <Icon name="shield-lock-outline" size={80} color={theme.colors.primary} />
+          <Icon name="shield-lock-outline" size={88} color={theme.colors.primary} />
           <Text style={[styles.lockTitle, { color: theme.colors.text }]}>NoNet Pay</Text>
           <Text style={[styles.lockSubtitle, { color: theme.colors.textSecondary }]}>Secure Payment App</Text>
           
@@ -222,7 +225,7 @@ const HomeScreen: React.FC = () => {
               style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
               onPress={handleBiometricAuth}
             >
-              <Icon name="fingerprint" size={24} color={theme.colors.buttonText} />
+              <Icon name="fingerprint" size={26} color={theme.colors.buttonText} />
               <Text style={[styles.retryButtonText, { color: theme.colors.buttonText }]}>
                 Authenticate
               </Text>
@@ -236,30 +239,74 @@ const HomeScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar
-        barStyle={theme.dark ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.background}
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
       />
-      
-      {/* Header with Balance Card */}
-      <View style={[styles.header, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={[styles.greeting, { color: theme.colors.textSecondary }]}>Welcome to</Text>
-            <Text style={[styles.userName, { color: theme.colors.text }]}>NoNet Pay</Text>
-          </View>
-          <TouchableOpacity onPress={() => setIsLocked(true)}>
-            <Icon name="lock-outline" size={24} color={theme.colors.primary} />
-          </TouchableOpacity>
-        </View>
-      </View>
 
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Quick Actions */}
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={[styles.greeting, { color: theme.colors.textSecondary }]}>Welcome back</Text>
+            <Text style={[styles.userName, { color: theme.colors.text }]}>NoNet Pay</Text>
+          </View>
+          <TouchableOpacity 
+            onPress={() => setIsLocked(true)}
+            style={[styles.lockButton, { backgroundColor: theme.colors.card }]}
+          >
+            <Icon name="lock-outline" size={22} color={theme.colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Premium Status Card with Glassmorphism */}
+        <Animated.View
+          style={[
+            styles.statusCard,
+            {
+              opacity: fadeAnim,
+              backgroundColor: theme.colors.card,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <View style={styles.statusHeader}>
+            <View style={[styles.signalBadge, { backgroundColor: theme.colors.secondary + '20' }]}>
+              <Icon name="signal" size={18} color={theme.colors.secondary} />
+              <Text style={[styles.signalText, { color: theme.colors.secondary }]}>Offline Mode Active</Text>
+            </View>
+          </View>
+          
+          {/* Large Scan Button with Glassmorphism */}
+          <TouchableOpacity
+            style={[
+              styles.scanButton,
+              {
+                backgroundColor: theme.colors.primary,
+                shadowColor: theme.colors.primary,
+              },
+            ]}
+            onPress={() => setShowQRScanner(true)}
+            activeOpacity={0.8}
+          >
+            <Icon name="qrcode-scan" size={38} color="#FFFFFF" />
+            <Text style={styles.scanButtonText}>Scan any QR</Text>
+            <Text style={styles.scanButtonSubtext}>For instant payment</Text>
+          </TouchableOpacity>
+
+          <View style={styles.ussdInfo}>
+            <Icon name="phone-outline" size={18} color={theme.colors.textSecondary} />
+            <Text style={[styles.ussdText, { color: theme.colors.textSecondary }]}>Powered by *99# USSD</Text>
+          </View>
+        </Animated.View>
+
+        {/* Quick Actions Grid (4x2) */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Quick Actions</Text>
           <View style={styles.quickActionsGrid}>
             {quickActions.map((action, index) => (
               <Animated.View
@@ -270,29 +317,29 @@ const HomeScreen: React.FC = () => {
                     {
                       translateY: slideAnim.interpolate({
                         inputRange: [0, 50],
-                        outputRange: [0, 50 + index * 10],
+                        outputRange: [0, 50 + index * 5],
                       }),
                     },
                   ],
                 }}
               >
                 <TouchableOpacity
-                  style={[styles.actionCard, { 
-                    backgroundColor: theme.colors.card,
-                    borderColor: theme.colors.border,
-                    shadowColor: theme.dark ? '#000' : '#000',
-                  }]}
+                  style={[
+                    styles.actionCard,
+                    {
+                      backgroundColor: theme.colors.card,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
                   onPress={() => handleActionPress(action)}
                   activeOpacity={0.7}
                   disabled={loading}
                 >
-                  <View style={[styles.actionGradient, { backgroundColor: action.gradient[0] }]}>
-                    {loading && (action.id === 'balance' || action.id === 'transactions' || action.id === 'pending' || action.id === 'profile' || action.id === 'upipin') ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <Icon name={action.icon} size={28} color="#fff" />
-                    )}
-                  </View>
+                  {loading && (action.id === 'balance' || action.id === 'transactions' || action.id === 'pending' || action.id === 'profile' || action.id === 'upipin') ? (
+                    <ActivityIndicator color={theme.colors.primary} size="small" />
+                  ) : (
+                    <Icon name={action.icon} size={32} color={theme.colors.primary} style={{ opacity: 0.95 }} />
+                  )}
                   <Text style={[styles.actionTitle, { color: theme.colors.text }]}>{action.title}</Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -300,10 +347,10 @@ const HomeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* USSD Info Banner */}
+        {/* Security Banner */}
         <Animated.View
           style={[
-            styles.featureBanner,
+            styles.securityBanner,
             {
               opacity: fadeAnim,
               backgroundColor: theme.colors.card,
@@ -311,40 +358,16 @@ const HomeScreen: React.FC = () => {
             },
           ]}
         >
-          <View style={styles.bannerGradient}>
-            <Icon name="phone-outline" size={32} color={theme.colors.primary} />
-            <View style={styles.bannerText}>
-              <Text style={[styles.bannerTitle, { color: theme.colors.text }]}>Powered by *99#</Text>
-              <Text style={[styles.bannerSubtitle, { color: theme.colors.textSecondary }]}>
-                NoNet Pay via USSD - Works without internet
-              </Text>
-            </View>
+          <Icon name="shield-check" size={26} color={theme.colors.success} />
+          <View style={styles.bannerTextContainer}>
+            <Text style={[styles.bannerTitle, { color: theme.colors.text }]}>100% Secure & Private</Text>
+            <Text style={[styles.bannerSubtitle, { color: theme.colors.textSecondary }]}>
+              No data shared • Completely offline
+            </Text>
           </View>
         </Animated.View>
-
-
-
-        {/* Features Banner */}
-        <Animated.View
-          style={[
-            styles.featureBanner,
-            {
-              opacity: fadeAnim,
-              backgroundColor: theme.colors.card,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <View style={styles.bannerGradient}>
-            <Icon name="shield-check-outline" size={32} color={theme.colors.success} />
-            <View style={styles.bannerText}>
-              <Text style={[styles.bannerTitle, { color: theme.colors.text }]}>100% Secure & Private</Text>
-              <Text style={[styles.bannerSubtitle, { color: theme.colors.textSecondary }]}>
-                No data shared, completely offline payments
-              </Text>
-            </View>
-          </View>
-        </Animated.View>
+        
+        <View style={{ height: 110 }} />
       </ScrollView>
 
       <QRScanner
@@ -363,71 +386,179 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingTop: 50,
-    paddingHorizontal: 24,
-    paddingBottom: 30,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  greeting: {
-    fontSize: 14,
-    fontWeight: '400',
-  },
-  userName: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginTop: 4,
-    letterSpacing: -0.5,
-  },
   content: {
     flex: 1,
   },
+  scrollContent: {
+    paddingTop: 60,
+  },
+  header: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  greeting: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginBottom: 6,
+    letterSpacing: -0.2,
+  },
+  userName: {
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: -1.2,
+  },
+  lockButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  statusCard: {
+    marginHorizontal: 24,
+    borderRadius: 24,
+    padding: 28,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 10,
+    marginBottom: 32,
+  },
+  statusHeader: {
+    marginBottom: 20,
+  },
+  signalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 24,
+    gap: 8,
+  },
+  signalText: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+  },
+  scanButton: {
+    paddingVertical: 32,
+    paddingHorizontal: 36,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.5,
+    shadowRadius: 28,
+    elevation: 15,
+  },
+  scanButtonText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginTop: 14,
+    letterSpacing: -0.6,
+  },
+  scanButtonSubtext: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 6,
+    letterSpacing: -0.2,
+  },
+  ussdInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    gap: 6,
+  },
+  ussdText: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+  },
   section: {
-    paddingHorizontal: 20,
-    marginTop: 24,
+    paddingHorizontal: 24,
+    marginBottom: 32,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
-    marginBottom: 18,
-    letterSpacing: -0.3,
+    letterSpacing: -0.7,
+  },
+  seeAll: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 14,
   },
   actionCard: {
-    width: (width - 56) / 3,
+    width: (width - 48 - 42) / 4, // 48 for padding (24*2), 42 for gaps (14*3)
+    aspectRatio: 1,
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 8,
-    borderWidth: 1,
-  },
-  actionGradient: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
+    borderRadius: 24,
+    borderWidth: 0.5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 5,
   },
   actionTitle: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 14,
+    marginTop: 12,
+    lineHeight: 13,
+    letterSpacing: -0.1,
+    paddingHorizontal: 4,
+  },
+  securityBanner: {
+    marginHorizontal: 24,
+    borderRadius: 24,
+    padding: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+    borderWidth: 0.5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  bannerTextContainer: {
+    flex: 1,
+  },
+  bannerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 6,
+    letterSpacing: -0.4,
+  },
+  bannerSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 18,
+    letterSpacing: -0.2,
   },
   lockContent: {
     flex: 1,
@@ -436,69 +567,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   lockTitle: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '700',
-    marginTop: 30,
-    letterSpacing: -0.5,
+    marginTop: 32,
+    letterSpacing: -0.8,
   },
   lockSubtitle: {
-    fontSize: 16,
-    marginTop: 12,
-    marginBottom: 50,
-    fontWeight: '400',
+    fontSize: 17,
+    marginTop: 14,
+    marginBottom: 54,
+    fontWeight: '500',
+    letterSpacing: -0.2,
   },
   loadingContainer: {
     alignItems: 'center',
     marginTop: 40,
   },
   loadingText: {
-    fontSize: 15,
-    marginTop: 16,
+    fontSize: 16,
+    marginTop: 18,
+    letterSpacing: -0.2,
   },
   retryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    gap: 12,
-    marginTop: 40,
+    paddingVertical: 18,
+    paddingHorizontal: 36,
+    borderRadius: 24,
+    gap: 14,
+    marginTop: 44,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
   },
   retryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  featureBanner: {
-    marginHorizontal: 20,
-    marginVertical: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-  },
-  bannerGradient: {
-    flexDirection: 'row',
-    padding: 24,
-    alignItems: 'center',
-    gap: 16,
-  },
-  bannerText: {
-    flex: 1,
-  },
-  bannerTitle: {
     fontSize: 17,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontWeight: '600',
     letterSpacing: -0.3,
-  },
-  bannerSubtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    lineHeight: 18,
   },
 });
 

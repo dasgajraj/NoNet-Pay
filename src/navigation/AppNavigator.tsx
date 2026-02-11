@@ -1,22 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ActivityIndicator } from 'react-native';
 import HomeScreen from '../screens/HomeScreen';
 import SendMoneyScreen from '../screens/SendMoneyScreen';
 import RequestMoneyScreen from '../screens/RequestMoneyScreen';
 import OnboardingScreen, { ONBOARDING_KEY } from '../screens/OnboardingScreen';
+import QRScanner from '../components/QRScanner';
+import CustomBottomTab from '../components/CustomBottomTab';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 export type RootStackParamList = {
   Onboarding: undefined;
+  MainTabs: undefined;
+  SendMoney: { upiId?: string };
+  RequestMoney: undefined;
+};
+
+export type MainTabParamList = {
   Home: undefined;
   SendMoney: { upiId?: string };
   RequestMoney: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<MainTabParamList>();
+
+const MainTabs: React.FC = () => {
+  const { theme } = useTheme();
+  const { isLocked } = useAuth();
+  const [showScanner, setShowScanner] = useState(false);
+
+  return (
+    <>
+      <Tab.Navigator
+        tabBar={(props) => 
+          !isLocked ? (
+            <CustomBottomTab
+              {...props}
+              onScanPress={() => setShowScanner(true)}
+            />
+          ) : null
+        }
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="SendMoney" component={SendMoneyScreen} />
+        <Tab.Screen name="RequestMoney" component={RequestMoneyScreen} />
+      </Tab.Navigator>
+
+      <QRScanner
+        visible={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={(upiId) => {
+          setShowScanner(false);
+          // Navigate to SendMoney with scanned UPI ID
+        }}
+      />
+    </>
+  );
+};
 
 const AppNavigator: React.FC = () => {
   const { theme } = useTheme();
@@ -54,7 +102,7 @@ const AppNavigator: React.FC = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={hasCompletedOnboarding ? 'Home' : 'Onboarding'}
+        initialRouteName={hasCompletedOnboarding ? 'MainTabs' : 'Onboarding'}
         screenOptions={{
           headerShown: false,
           cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
@@ -67,43 +115,7 @@ const AppNavigator: React.FC = () => {
             {() => <OnboardingScreen onComplete={handleOnboardingComplete} />}
           </Stack.Screen>
         )}
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen 
-          name="SendMoney" 
-          component={SendMoneyScreen}
-          options={{
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: theme.colors.surface,
-              elevation: 0,
-              shadowOpacity: 0,
-            },
-            headerTintColor: theme.colors.text,
-            headerTitle: 'Send Money',
-            headerTitleStyle: {
-              fontWeight: 'bold',
-              fontSize: 18,
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="RequestMoney" 
-          component={RequestMoneyScreen}
-          options={{
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: theme.colors.surface,
-              elevation: 0,
-              shadowOpacity: 0,
-            },
-            headerTintColor: theme.colors.text,
-            headerTitle: 'Request Money',
-            headerTitleStyle: {
-              fontWeight: 'bold',
-              fontSize: 18,
-            },
-          }}
-        />
+        <Stack.Screen name="MainTabs" component={MainTabs} />
       </Stack.Navigator>
     </NavigationContainer>
   );
