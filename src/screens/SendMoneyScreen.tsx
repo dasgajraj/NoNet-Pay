@@ -218,7 +218,7 @@ const SendMoneyScreen: React.FC = () => {
         </ScrollView>
 
         {/* Send Button */}
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
           <TouchableOpacity
             style={[styles.sendButton, (!phoneNumber || !amount) && styles.sendButtonDisabled]}
             onPress={handleSendMoney}
@@ -226,21 +226,21 @@ const SendMoneyScreen: React.FC = () => {
             activeOpacity={0.8}
           >
             <View
-              style={[styles.sendButtonGradient, phoneNumber && amount ? styles.sendButtonActive : styles.sendButtonInactive]}
+              style={[styles.sendButtonGradient, phoneNumber && amount ? { backgroundColor: theme.colors.primary } : { backgroundColor: theme.colors.disabled }]}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={theme.colors.buttonText} />
               ) : (
                 <>
-                  <Icon name="send-outline" size={24} color="#fff" />
-                  <Text style={styles.sendButtonText}>
+                  <Icon name="send-outline" size={24} color={theme.colors.buttonText} />
+                  <Text style={[styles.sendButtonText, { color: theme.colors.buttonText }]}>
                     {phoneNumber.includes('@') ? 'Send via UPI ID (*99#)' : 'Send via Mobile (*99#)'}
                   </Text>
                 </>
               )}
             </View>
           </TouchableOpacity>
-          <Text style={styles.helperText}>
+          <Text style={[styles.helperText, { color: theme.colors.textSecondary }]}>
             {phoneNumber.includes('@') 
               ? 'UPI ID will be copied - paste it in the *99# dialog' 
               : 'Opens *99# USSD with mobile & amount filled'}

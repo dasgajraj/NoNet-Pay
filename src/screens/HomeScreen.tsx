@@ -293,7 +293,7 @@ const HomeScreen: React.FC = () => {
             onPress={() => setShowQRScanner(true)}
             activeOpacity={0.8}
           >
-            <Icon name="qrcode-scan" size={38} color="#FFFFFF" />
+            <Icon name="qrcode-scan" size={38} color={theme.colors.buttonText} />
             <Text style={styles.scanButtonText}>Scan any QR</Text>
             <Text style={styles.scanButtonSubtext}>For instant payment</Text>
           </TouchableOpacity>

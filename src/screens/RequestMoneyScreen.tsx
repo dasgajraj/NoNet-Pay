@@ -89,8 +89,8 @@ const RequestMoneyScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fafafa" />
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.background} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -106,11 +106,11 @@ const RequestMoneyScreen: React.FC = () => {
           ]}
         >
           {/* Header Card */}
-          <View style={styles.headerCard}>
+          <View style={[styles.headerCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
             <View style={styles.headerGradient}>
-              <Icon name="cash-multiple" size={44} color="#2c2c2c" />
-              <Text style={styles.headerTitle}>Request Payment</Text>
-              <Text style={styles.headerSubtitle}>
+              <Icon name="cash-multiple" size={44} color={theme.colors.primary} />
+              <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Request Payment</Text>
+              <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary }]}>
                 Request money via USSD *99#
               </Text>
             </View>
@@ -164,24 +164,24 @@ const RequestMoneyScreen: React.FC = () => {
 
           {/* UPI ID / Mobile Input */}
           <View style={styles.section}>
-            <Text style={styles.label}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
               {inputType === 'upi' ? 'UPI ID' : 'Mobile Number'}
             </Text>
-            <View style={styles.inputCard}>
+            <View style={[styles.inputCard, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
               <Icon 
                 name={inputType === 'upi' ? 'at' : 'phone-outline'} 
                 size={20} 
-                color="#2c2c2c" 
+                color={theme.colors.primary} 
                 style={styles.inputIcon} 
               />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: theme.colors.text }]}
                 placeholder={
                   inputType === 'upi' 
                     ? 'Enter UPI ID (e.g., name@upi)' 
                     : 'Enter Mobile Number'
                 }
-                placeholderTextColor="#999"
+                placeholderTextColor={theme.colors.placeholder}
                 value={upiId}
                 onChangeText={setUpiId}
                 autoCapitalize="none"
@@ -193,15 +193,15 @@ const RequestMoneyScreen: React.FC = () => {
 
           {/* Amount Input */}
           <View style={styles.section}>
-            <Text style={styles.label}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
               Amount (₹) {inputType === 'mobile' ? '(Optional - enter in dialog)' : ''}
             </Text>
-            <View style={styles.inputCard}>
-              <Text style={styles.currencySymbol}>₹</Text>
+            <View style={[styles.inputCard, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
+              <Text style={[styles.currencySymbol, { color: theme.colors.text }]}>₹</Text>
               <TextInput
-                style={[styles.input, styles.amountInput]}
+                style={[styles.input, styles.amountInput, { color: theme.colors.text }]}
                 placeholder={inputType === 'mobile' ? 'Enter in USSD dialog' : 'Enter amount'}
-                placeholderTextColor="#999"
+                placeholderTextColor={theme.colors.placeholder}
                 value={amount}
                 onChangeText={setAmount}
                 keyboardType="numeric"
@@ -241,14 +241,14 @@ const RequestMoneyScreen: React.FC = () => {
             activeOpacity={0.8}
           >
             <View
-              style={[styles.requestButtonGradient, upiId ? styles.requestButtonActive : styles.requestButtonInactive]}
+              style={[styles.requestButtonGradient, upiId ? { backgroundColor: theme.colors.primary } : { backgroundColor: theme.colors.disabled }]}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={theme.colors.buttonText} />
               ) : (
                 <>
-                  <Icon name="cash-multiple" size={24} color="#fff" />
-                  <Text style={styles.requestButtonText}>
+                  <Icon name="cash-multiple" size={24} color={theme.colors.buttonText} />
+                  <Text style={[styles.requestButtonText, { color: theme.colors.buttonText }]}>
                     Request via *99#
                   </Text>
                 </>
@@ -257,18 +257,18 @@ const RequestMoneyScreen: React.FC = () => {
           </TouchableOpacity>
 
           {/* Helper Text */}
-          <Text style={styles.helperText}>
+          <Text style={[styles.helperText, { color: theme.colors.textSecondary }]}>
             {inputType === 'upi' 
               ? 'UPI ID will be copied - paste it in the *99# dialog' 
               : 'Enter amount and UPI PIN in the *99# dialog'}
           </Text>
 
           {/* Info Card */}
-          <View style={styles.infoCard}>
-            <Icon name="information-outline" size={24} color="#2c2c2c" />
+          <View style={[styles.infoCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <Icon name="information-outline" size={24} color={theme.colors.primary} />
             <View style={styles.infoTextContainer}>
-              <Text style={styles.infoTitle}>How it works</Text>
-              <Text style={styles.infoText}>
+              <Text style={[styles.infoTitle, { color: theme.colors.text }]}>How it works</Text>
+              <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>
                 Use USSD *99# to request money from any mobile number or UPI ID. 
                 The request will be sent directly through your bank's USSD service.
               </Text>

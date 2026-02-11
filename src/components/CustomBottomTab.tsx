@@ -127,7 +127,7 @@ const CustomBottomTab: React.FC<CustomBottomTabProps> = ({
           onPress={onScanPress}
           activeOpacity={0.8}
         >
-          <Icon name="qrcode-scan" size={36} color="#FFFFFF" />
+          <Icon name="qrcode-scan" size={36} color={theme.colors.buttonText} />
         </TouchableOpacity>
       </View>
     </View>

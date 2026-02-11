@@ -25,42 +25,42 @@ export interface Theme {
 const lightTheme: Theme = {
   dark: false,
   colors: {
-    background: '#f5f5f5',
-    surface: '#ffffff',
-    primary: '#6200ee',
-    secondary: '#03dac6',
-    text: '#000000',
-    textSecondary: '#666666',
-    border: '#e0e0e0',
-    error: '#b00020',
-    success: '#4caf50',
-    warning: '#ff9800',
-    card: '#ffffff',
-    cardShadow: 'rgba(0, 0, 0, 0.1)',
-    buttonText: '#ffffff',
-    inputBackground: '#f9f9f9',
-    placeholder: '#999999',
+    background: '#F1F1F1', // Anti-Flash White
+    surface: 'rgba(255, 255, 255, 0.9)', // White with transparency
+    primary: '#6491DE', // United Nations Blue
+    secondary: '#8fb4e8', // Light blue accent
+    text: '#1a1a1a', // Dark text for contrast
+    textSecondary: '#5a5a5a',
+    border: 'rgba(100, 145, 222, 0.2)',
+    error: '#EF4444',
+    success: '#10B981',
+    warning: '#F59E0B',
+    card: 'rgba(255, 255, 255, 0.95)', // White card with slight transparency
+    cardShadow: 'rgba(100, 145, 222, 0.15)',
+    buttonText: '#FFFFFF',
+    inputBackground: 'rgba(100, 145, 222, 0.08)',
+    placeholder: '#888888',
   },
 };
 
 const darkTheme: Theme = {
   dark: true,
   colors: {
-    background: '#121212', // Deep charcoal
-    surface: 'rgba(30, 30, 30, 0.7)', // Glassmorphism surface
-    primary: '#7C3AED', // Royal Purple
-    secondary: '#06D6A0', // Neon Teal
-    text: '#FFFFFF',
-    textSecondary: '#B0B0B0',
-    border: 'rgba(255, 255, 255, 0.08)',
+    background: '#0a1628', // Dark navy blue
+    surface: 'rgba(10, 34, 76, 0.7)', // Glassmorphism surface
+    primary: '#6491DE', // United Nations Blue
+    secondary: '#8fb4e8', // Light blue accent
+    text: '#F1F1F1', // Anti-Flash White
+    textSecondary: '#B0B8C5',
+    border: 'rgba(100, 145, 222, 0.15)',
     error: '#EF4444',
     success: '#10B981',
     warning: '#F59E0B',
-    card: 'rgba(45, 45, 50, 0.65)', // Enhanced glassmorphism
-    cardShadow: 'rgba(124, 58, 237, 0.25)',
-    buttonText: '#FFFFFF',
-    inputBackground: 'rgba(55, 55, 60, 0.6)',
-    placeholder: '#808080',
+    card: 'rgba(10, 61, 127, 0.65)', // Dark Cerulean glassmorphism
+    cardShadow: 'rgba(100, 145, 222, 0.3)',
+    buttonText: '#F1F1F1',
+    inputBackground: 'rgba(7, 61, 127, 0.5)',
+    placeholder: '#8893A5',
   },
 };
 
