@@ -84,6 +84,14 @@ class UssdModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMo
             promise.reject("USSD_ERROR", e.message)
         }
     }
+
+    @ReactMethod
+    fun addListener(eventName: String?) {
+    }
+
+    @ReactMethod
+    fun removeListeners(count: Int?) {
+    }
     
     private fun sendEvent(eventName: String, data: String) {
         context
