@@ -1,7 +1,3 @@
-/**
- * NoNet Pay - Send Money Screen
- */
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -12,7 +8,6 @@ import {
   ActivityIndicator,
   StyleSheet,
   Animated,
-  StatusBar,
   KeyboardAvoidingView,
   Platform,
   Vibration,
@@ -22,6 +17,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { USSD_CODES, dialUssd } from '../services/ussdService';
 import { useTheme } from '../context/ThemeContext';
@@ -29,9 +25,12 @@ import { useTheme } from '../context/ThemeContext';
 type SendMoneyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SendMoney'>;
 type SendMoneyScreenRouteProp = RouteProp<RootStackParamList, 'SendMoney'>;
 
+const quickAmounts = [100, 200, 500, 1000, 2000, 5000];
+
 const SendMoneyScreen: React.FC = () => {
   const navigation = useNavigation<SendMoneyScreenNavigationProp>();
   const route = useRoute<SendMoneyScreenRouteProp>();
+  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [amount, setAmount] = useState('');
@@ -39,29 +38,26 @@ const SendMoneyScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const slideAnim = useRef(new Animated.Value(28)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 400,
+        duration: 350,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 400,
+        duration: 350,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // Pre-fill with scanned UPI ID if available
     if (route.params?.upiId) {
       setPhoneNumber(route.params.upiId);
     }
-  }, [route.params?.upiId]);
-
-  const quickAmounts = [100, 200, 500, 1000, 2000, 5000];
+  }, [fadeAnim, route.params?.upiId, slideAnim]);
 
   const handleSendMoney = async () => {
     if (!phoneNumber || !amount) {
@@ -70,16 +66,13 @@ const SendMoneyScreen: React.FC = () => {
 
     try {
       Vibration.vibrate([0, 100, 100, 100]);
-      
-      // Check if it's a UPI ID (contains @)
+
       if (phoneNumber.includes('@')) {
-        // Copy UPI ID and show toast
         await Clipboard.setString(phoneNumber);
-        ToastAndroid.show('✅ UPI ID IS COPIED - Paste in dialog!', ToastAndroid.LONG);
+        ToastAndroid.show('UPI ID copied. Paste it in the *99# dialog.', ToastAndroid.LONG);
         await new Promise(resolve => setTimeout(resolve, 500));
         await dialUssd(USSD_CODES.SEND_VIA_UPI, setLoading);
       } else {
-        // Mobile number - no vibration, no copy
         await dialUssd(USSD_CODES.SEND_VIA_MOBILE(phoneNumber, amount), setLoading);
       }
     } catch (error) {
@@ -87,61 +80,91 @@ const SendMoneyScreen: React.FC = () => {
     }
   };
 
-  const selectAmount = (amt: number) => {
-    setAmount(amt.toString());
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <StatusBar
-        barStyle={theme.dark ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.background}
-      />
-      
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={{
+            paddingTop: insets.top + 18,
+            paddingHorizontal: 20,
+            paddingBottom: 180 + insets.bottom,
+          }}
         >
           <Animated.View
-            style={[
-              styles.content,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
+            style={{
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            }}
           >
-            {/* Phone Number Input */}
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>Mobile Number / UPI ID</Text>
-              <View style={[styles.inputCard, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
-                <Icon name="phone-outline" size={20} color={theme.colors.primary} style={styles.inputIcon} />
+            <View style={styles.topBar}>
+              <View>
+                <Text style={[styles.eyebrow, { color: theme.colors.textSecondary }]}>Make a payment</Text>
+                <Text style={[styles.screenTitle, { color: theme.colors.text }]}>Send money</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.iconButton, { backgroundColor: theme.colors.surfaceVariant }]}
+                onPress={() => navigation.navigate('MainTabs')}
+              >
+                <Icon name="arrow-left" size={20} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View
+              style={[
+                styles.heroCard,
+                {
+                  backgroundColor: theme.colors.cardElevated,
+                  borderColor: theme.colors.border,
+                  shadowColor: theme.colors.shadow,
+                },
+              ]}
+            >
+              <View style={[styles.heroBadge, { backgroundColor: theme.colors.primaryContainer }]}>
+                <Icon name="cellphone-link" size={16} color={theme.colors.primary} />
+                <Text style={[styles.heroBadgeText, { color: theme.colors.primary }]}>Works without internet</Text>
+              </View>
+              <Text style={[styles.heroTitle, { color: theme.colors.text }]}>
+                Pay using a mobile number or scanned UPI ID.
+              </Text>
+              <Text style={[styles.heroText, { color: theme.colors.textSecondary }]}>
+                Keep the recipient handy, confirm the amount, and we’ll open the right USSD flow.
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.formCard,
+                {
+                  backgroundColor: theme.colors.cardElevated,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>Recipient</Text>
+              <View style={[styles.inputShell, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
+                <Icon name="account-outline" size={20} color={theme.colors.primary} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, { color: theme.colors.text }]}
-                  placeholder="Enter mobile number or UPI ID"
+                  placeholder="Mobile number or UPI ID"
                   placeholderTextColor={theme.colors.placeholder}
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
-                  keyboardType="default"
                   autoCapitalize="none"
                 />
                 {phoneNumber.length > 0 && (
                   <TouchableOpacity onPress={() => setPhoneNumber('')}>
-                    <Icon name="close-circle" size={20} color={theme.colors.placeholder} />
+                    <Icon name="close-circle" size={18} color={theme.colors.textTertiary} />
                   </TouchableOpacity>
                 )}
               </View>
-            </View>
 
-            {/* Amount Input */}
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>Amount</Text>
-              <View style={[styles.inputCard, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
-                <Text style={[styles.currencySymbol, { color: theme.colors.text }]}>₹</Text>
+              <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>Amount</Text>
+              <View style={[styles.inputShell, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
+                <Text style={[styles.currency, { color: theme.colors.text }]}>₹</Text>
                 <TextInput
                   style={[styles.input, styles.amountInput, { color: theme.colors.text }]}
                   placeholder="0"
@@ -152,41 +175,41 @@ const SendMoneyScreen: React.FC = () => {
                 />
               </View>
 
-              {/* Quick Amount Buttons */}
-              <View style={styles.quickAmounts}>
-                {quickAmounts.map((amt) => (
-                  <TouchableOpacity
-                    key={amt}
-                    style={[
-                      styles.quickAmountBtn,
-                      { borderColor: theme.colors.border },
-                      amount === amt.toString() && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-                    ]}
-                    onPress={() => selectAmount(amt)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
+              <View style={styles.amountRow}>
+                {quickAmounts.map(value => {
+                  const selected = amount === value.toString();
+                  return (
+                    <TouchableOpacity
+                      key={value}
                       style={[
-                        styles.quickAmountText,
-                        { color: theme.colors.text },
-                        amount === amt.toString() && { color: theme.colors.buttonText },
+                        styles.amountChip,
+                        {
+                          backgroundColor: selected ? theme.colors.primary : theme.colors.surfaceVariant,
+                          borderColor: selected ? theme.colors.primary : theme.colors.border,
+                        },
                       ]}
+                      onPress={() => setAmount(value.toString())}
+                      activeOpacity={0.85}
                     >
-                      ₹{amt}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text
+                        style={[
+                          styles.amountChipText,
+                          { color: selected ? theme.colors.buttonText : theme.colors.text },
+                        ]}
+                      >
+                        ₹{value}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-            </View>
 
-            {/* Note Input */}
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>Add Note (Optional)</Text>
-              <View style={[styles.inputCard, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
-                <Icon name="note-text-outline" size={20} color={theme.colors.primary} style={styles.inputIcon} />
+              <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>Note</Text>
+              <View style={[styles.inputShell, styles.multilineShell, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
+                <Icon name="text-box-outline" size={20} color={theme.colors.primary} style={styles.inputIcon} />
                 <TextInput
-                  style={[styles.input, { color: theme.colors.text }]}
-                  placeholder="Enter note or message"
+                  style={[styles.input, styles.multilineInput, { color: theme.colors.text }]}
+                  placeholder="Optional payment note"
                   placeholderTextColor={theme.colors.placeholder}
                   value={note}
                   onChangeText={setNote}
@@ -195,56 +218,84 @@ const SendMoneyScreen: React.FC = () => {
               </View>
             </View>
 
-            {/* Transaction Details */}
-            {phoneNumber && amount && (
-              <Animated.View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>Transaction Summary</Text>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Recipient</Text>
-                  <Text style={styles.summaryValue}>{phoneNumber}</Text>
+            {(phoneNumber || amount) && (
+              <View
+                style={[
+                  styles.summaryCard,
+                  {
+                    backgroundColor: theme.colors.card,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.summaryHeader}>
+                  <Text style={[styles.summaryTitle, { color: theme.colors.text }]}>Payment summary</Text>
+                  <View style={[styles.summaryPill, { backgroundColor: theme.colors.surfaceVariant }]}>
+                    <Text style={[styles.summaryPillText, { color: theme.colors.textSecondary }]}>
+                      {phoneNumber.includes('@') ? 'UPI ID' : 'Mobile'}
+                    </Text>
+                  </View>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Amount</Text>
-                  <Text style={styles.summaryValueBold}>₹{amount}</Text>
+                  <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Recipient</Text>
+                  <Text style={[styles.summaryValue, { color: theme.colors.text }]} numberOfLines={1}>
+                    {phoneNumber || 'Not entered'}
+                  </Text>
                 </View>
-                <View style={styles.summaryDivider} />
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Total Payable</Text>
-                  <Text style={styles.summaryTotal}>₹{amount}</Text>
+                  <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Amount</Text>
+                  <Text style={[styles.summaryTotal, { color: theme.colors.text }]}>
+                    {amount ? `₹${amount}` : 'Pending'}
+                  </Text>
                 </View>
-              </Animated.View>
+                {note ? (
+                  <View style={styles.summaryRow}>
+                    <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Note</Text>
+                    <Text style={[styles.summaryValue, { color: theme.colors.text }]} numberOfLines={2}>
+                      {note}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
             )}
           </Animated.View>
         </ScrollView>
 
-        {/* Send Button */}
-        <View style={[styles.bottomBar, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
+        <View
+          style={[
+            styles.footer,
+            {
+              paddingBottom: Math.max(insets.bottom, 16),
+              backgroundColor: theme.colors.tabBar,
+              borderTopColor: theme.colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.footerHint, { color: theme.colors.textSecondary }]}>
+            {phoneNumber.includes('@')
+              ? 'We’ll copy the UPI ID so you can paste it into the *99# flow.'
+              : 'Mobile payments open *99# with recipient and amount ready.'}
+          </Text>
           <TouchableOpacity
-            style={[styles.sendButton, (!phoneNumber || !amount) && styles.sendButtonDisabled]}
+            style={[
+              styles.primaryButton,
+              { backgroundColor: phoneNumber && amount ? theme.colors.primary : theme.colors.disabled },
+            ]}
             onPress={handleSendMoney}
             disabled={!phoneNumber || !amount || loading}
-            activeOpacity={0.8}
+            activeOpacity={0.9}
           >
-            <View
-              style={[styles.sendButtonGradient, phoneNumber && amount ? { backgroundColor: theme.colors.primary } : { backgroundColor: theme.colors.disabled }]}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color={theme.colors.buttonText} />
-              ) : (
-                <>
-                  <Icon name="send-outline" size={24} color={theme.colors.buttonText} />
-                  <Text style={[styles.sendButtonText, { color: theme.colors.buttonText }]}>
-                    {phoneNumber.includes('@') ? 'Send via UPI ID (*99#)' : 'Send via Mobile (*99#)'}
-                  </Text>
-                </>
-              )}
-            </View>
+            {loading ? (
+              <ActivityIndicator size="small" color={theme.colors.buttonText} />
+            ) : (
+              <>
+                <Icon name="send-outline" size={20} color={theme.colors.buttonText} />
+                <Text style={[styles.primaryButtonText, { color: theme.colors.buttonText }]}>
+                  {phoneNumber.includes('@') ? 'Send via UPI ID' : 'Send via mobile'}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
-          <Text style={[styles.helperText, { color: theme.colors.textSecondary }]}>
-            {phoneNumber.includes('@') 
-              ? 'UPI ID will be copied - paste it in the *99# dialog' 
-              : 'Opens *99# USSD with mobile & amount filled'}
-          </Text>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -254,232 +305,204 @@ const SendMoneyScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafa',
   },
   flex: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 100,
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  content: {
-    padding: 24,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2c2c2c',
-    marginBottom: 14,
-    letterSpacing: -0.3,
-  },
-  label: {
-    fontSize: 14,
+  eyebrow: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#2c2c2c',
-    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
   },
-  inputCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 18,
+  screenTitle: {
+    fontSize: 30,
+    fontWeight: '700',
+    letterSpacing: -0.8,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroCard: {
+    borderWidth: 1,
+    borderRadius: 26,
+    padding: 22,
+    marginBottom: 18,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.1,
+    shadowRadius: 26,
+    elevation: 6,
+  },
+  heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    alignSelf: 'flex-start',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    marginBottom: 14,
+  },
+  heroBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: -0.7,
+    lineHeight: 30,
+    marginBottom: 8,
+  },
+  heroText: {
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  formCard: {
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderRadius: 26,
+    padding: 20,
+    marginBottom: 18,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 10,
+    marginTop: 16,
+  },
+  inputShell: {
+    minHeight: 56,
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  multilineShell: {
+    alignItems: 'flex-start',
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   inputIcon: {
     marginRight: 12,
+    marginTop: Platform.OS === 'ios' ? 0 : 1,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#2c2c2c',
     padding: 0,
   },
+  multilineInput: {
+    minHeight: 70,
+    textAlignVertical: 'top',
+  },
   amountInput: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
   },
-  currencySymbol: {
+  currency: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#2c2c2c',
     marginRight: 8,
   },
-  quickAmounts: {
+  amountRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 12,
-    gap: 8,
+    gap: 10,
+    marginTop: 14,
   },
-  quickAmountBtn: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 10,
+  amountChip: {
     borderWidth: 1,
-    borderColor: '#e8e8e8',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
-    elevation: 1,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
-  quickAmountBtnSelected: {
-    backgroundColor: '#2c2c2c',
-    borderColor: '#2c2c2c',
-  },
-  quickAmountText: {
+  amountChipText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#6b6b6b',
-  },
-  quickAmountTextSelected: {
-    color: '#fff',
-  },
-  contactsScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
-  },
-  contactCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginRight: 12,
-    width: 120,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  contactCardSelected: {
-    backgroundColor: '#f0f0f0',
-    borderWidth: 2,
-    borderColor: '#2c2c2c',
-  },
-  contactAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  contactAvatarText: {
-    fontSize: 24,
-  },
-  addContact: {
-    backgroundColor: '#f5f5f5',
-  },
-  contactName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2c2c2c',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  contactPhone: {
-    fontSize: 10,
-    color: '#9e9e9e',
-    textAlign: 'center',
+    fontWeight: '700',
   },
   summaryCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderRadius: 24,
+    padding: 18,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   summaryTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#2c2c2c',
-    marginBottom: 16,
+  },
+  summaryPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  summaryPillText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    gap: 16,
+    marginTop: 10,
   },
   summaryLabel: {
-    fontSize: 14,
-    color: '#6b6b6b',
+    fontSize: 13,
+    fontWeight: '500',
   },
   summaryValue: {
+    flex: 1,
     fontSize: 14,
-    color: '#2c2c2c',
-  },
-  summaryValueBold: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#2c2c2c',
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: '#e8e8e8',
-    marginVertical: 12,
+    textAlign: 'right',
   },
   summaryTotal: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#2c2c2c',
+    letterSpacing: -0.5,
   },
-  bottomBar: {
+  footer: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
-    backgroundColor: '#fff',
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#e8e8e8',
   },
-  sendButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  sendButtonGradient: {
-    paddingVertical: 18,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  sendButtonActive: {
-    backgroundColor: '#2c2c2c',
-  },
-  sendButtonInactive: {
-    backgroundColor: '#d4d4d4',
-  },
-  sendButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  helperText: {
-    marginTop: 12,
-    fontSize: 13,
-    color: '#6b6b6b',
+  footerHint: {
+    fontSize: 12,
+    lineHeight: 18,
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  primaryButton: {
+    height: 58,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

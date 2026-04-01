@@ -1,8 +1,3 @@
-/**
- * NoNet Pay - Home Screen
- * High-Fidelity Fintech UI with Glassmorphism
- */
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -10,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
   Animated,
   Dimensions,
   ActivityIndicator,
@@ -18,7 +12,8 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList, MainTabParamList } from '../navigation/AppNavigator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MainTabParamList } from '../navigation/AppNavigator';
 import { USSD_CODES, dialUssd, requestPermissions } from '../services/ussdService';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -28,50 +23,62 @@ import {
   getBiometricName,
 } from '../services/BiometricAuth';
 import QRScanner from '../components/QRScanner';
-import LinearGradient from 'react-native-linear-gradient';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 type HomeScreenNavigationProp = StackNavigationProp<MainTabParamList, 'Home'>;
 
 interface QuickAction {
   id: string;
   title: string;
+  subtitle: string;
   icon: string;
-  gradient: string[];
+  tone: 'primary' | 'secondary';
   screen: keyof MainTabParamList;
 }
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { isLocked, setIsLocked } = useAuth();
-  const [biometryType, setBiometryType] = useState<string>('');
+  const [biometryType, setBiometryType] = useState('');
   const [loading, setLoading] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
+  const slideAnim = useRef(new Animated.Value(36)).current;
 
   useEffect(() => {
     const timer = setTimeout(() => {
       initBiometric();
       requestPermissions();
-    }, 500);
-    
+    }, 400);
+
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
     if (!isLocked) {
-      animateContent();
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 450,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 450,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
-  }, [isLocked]);
+  }, [fadeAnim, isLocked, slideAnim]);
 
   const initBiometric = async () => {
     try {
-      const { available, biometryType } = await checkBiometricAvailability();
-      if (available && biometryType) {
-        setBiometryType(getBiometricName(biometryType));
+      const { available, biometryType: detectedBiometryType } = await checkBiometricAvailability();
+      if (available && detectedBiometryType) {
+        setBiometryType(getBiometricName(detectedBiometryType));
         handleBiometricAuth();
       } else {
         setIsLocked(false);
@@ -86,84 +93,59 @@ const HomeScreen: React.FC = () => {
     setLoading(true);
     const success = await authenticateWithBiometric('Unlock NoNet Pay');
     setLoading(false);
-    
+
     if (success) {
       setIsLocked(false);
     }
   };
 
-  const animateContent = () => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-
-
   const quickActions: QuickAction[] = [
     {
       id: 'balance',
       title: 'Check Balance',
+      subtitle: 'Bank balance via *99#',
       icon: 'wallet-outline',
-      gradient: [theme.colors.primary, theme.colors.primary],
+      tone: 'primary',
       screen: 'Home',
     },
     {
       id: 'transactions',
-      title: 'Transaction History',
+      title: 'Transactions',
+      subtitle: 'Recent USSD history',
       icon: 'history',
-      gradient: [theme.colors.primary, theme.colors.primary],
+      tone: 'secondary',
       screen: 'Home',
     },
     {
       id: 'upipin',
-      title: 'UPI PIN',
-      icon: 'lock-outline',
-      gradient: [theme.colors.secondary, theme.colors.secondary],
+      title: 'Manage UPI PIN',
+      subtitle: 'Reset or change PIN',
+      icon: 'shield-key-outline',
+      tone: 'secondary',
       screen: 'Home',
     },
     {
       id: 'request',
       title: 'Request Money',
-      icon: 'cash-refund',
-      gradient: [theme.colors.secondary, theme.colors.secondary],
+      subtitle: 'Raise a payment request',
+      icon: 'cash-plus',
+      tone: 'primary',
       screen: 'RequestMoney',
     },
     {
       id: 'send',
       title: 'Send Money',
+      subtitle: 'Transfer to mobile or UPI',
       icon: 'send-outline',
-      gradient: [theme.colors.primary, theme.colors.primary],
+      tone: 'primary',
       screen: 'SendMoney',
     },
     {
       id: 'pending',
-      title: 'Pending',
-      icon: 'clock-time-four-outline',
-      gradient: [theme.colors.secondary, theme.colors.secondary],
-      screen: 'Home',
-    },
-    {
-      id: 'profile',
-      title: 'My Profile',
-      icon: 'account-outline',
-      gradient: [theme.colors.primary, theme.colors.primary],
-      screen: 'Home',
-    },
-    {
-      id: 'support',
-      title: 'Help & Support',
-      icon: 'help-circle-outline',
-      gradient: [theme.colors.secondary, theme.colors.secondary],
+      title: 'Pending Requests',
+      subtitle: 'Review pending items',
+      icon: 'progress-clock',
+      tone: 'secondary',
       screen: 'Home',
     },
   ];
@@ -176,9 +158,6 @@ const HomeScreen: React.FC = () => {
       case 'request':
         navigation.navigate('RequestMoney');
         break;
-      case 'scan':
-        setShowQRScanner(true);
-        break;
       case 'balance':
         await dialUssd(USSD_CODES.CHECK_BALANCE, setLoading);
         break;
@@ -188,49 +167,70 @@ const HomeScreen: React.FC = () => {
       case 'pending':
         await dialUssd(USSD_CODES.PENDING_REQUESTS, setLoading);
         break;
-      case 'profile':
-        await dialUssd(USSD_CODES.PROFILE, setLoading);
-        break;
       case 'upipin':
         await dialUssd(USSD_CODES.UPI_PIN, setLoading);
         break;
       default:
-        navigation.navigate(action.screen as any);
+        navigation.navigate(action.screen as never);
     }
   };
-
-
 
   if (isLocked) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <StatusBar
-          barStyle={theme.dark ? 'light-content' : 'dark-content'}
-          backgroundColor={theme.colors.background}
-        />
-        <View style={styles.lockContent}>
-          <Icon name="shield-lock-outline" size={88} color={theme.colors.primary} />
+        <View style={[styles.lockDecorTop, { backgroundColor: theme.colors.primaryContainer }]} />
+        <View style={[styles.lockDecorBottom, { backgroundColor: theme.colors.surfaceVariant }]} />
+        <View style={[styles.lockContent, { paddingTop: insets.top + 32 }]}>
+          <View
+            style={[
+              styles.lockBadge,
+              {
+                backgroundColor: theme.colors.cardElevated,
+                borderColor: theme.colors.border,
+                shadowColor: theme.colors.shadow,
+              },
+            ]}
+          >
+            <Icon name="shield-lock-outline" size={42} color={theme.colors.primary} />
+          </View>
           <Text style={[styles.lockTitle, { color: theme.colors.text }]}>NoNet Pay</Text>
-          <Text style={[styles.lockSubtitle, { color: theme.colors.textSecondary }]}>Secure Payment App</Text>
-          
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={[styles.loadingText, { color: theme.colors.text }]}>
-                {biometryType ? `Authenticating with ${biometryType}...` : 'Authenticating...'}
-              </Text>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
-              onPress={handleBiometricAuth}
-            >
-              <Icon name="fingerprint" size={26} color={theme.colors.buttonText} />
-              <Text style={[styles.retryButtonText, { color: theme.colors.buttonText }]}>
-                Authenticate
-              </Text>
-            </TouchableOpacity>
-          )}
+          <Text style={[styles.lockSubtitle, { color: theme.colors.textSecondary }]}>
+            Secure offline payments with biometric protection.
+          </Text>
+
+          <View
+            style={[
+              styles.lockCard,
+              {
+                backgroundColor: theme.colors.cardElevated,
+                borderColor: theme.colors.border,
+                shadowColor: theme.colors.shadow,
+              },
+            ]}
+          >
+            <Text style={[styles.lockCardTitle, { color: theme.colors.text }]}>Unlock to continue</Text>
+            <Text style={[styles.lockCardBody, { color: theme.colors.textSecondary }]}>
+              {biometryType ? `Use ${biometryType} to access your payment controls.` : 'Authenticate to continue.'}
+            </Text>
+
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+                  Verifying identity...
+                </Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.authButton, { backgroundColor: theme.colors.primary }]}
+                onPress={handleBiometricAuth}
+                activeOpacity={0.9}
+              >
+                <Icon name="fingerprint" size={20} color={theme.colors.buttonText} />
+                <Text style={[styles.authButtonText, { color: theme.colors.buttonText }]}>Authenticate</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -238,142 +238,157 @@ const HomeScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="transparent"
-        translucent
-      />
-
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: insets.top + 18,
+            paddingBottom: 132 + insets.bottom,
+          },
+        ]}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.greeting, { color: theme.colors.textSecondary }]}>Welcome back</Text>
-            <Text style={[styles.userName, { color: theme.colors.text }]}>NoNet Pay</Text>
-          </View>
-          <TouchableOpacity 
-            onPress={() => setIsLocked(true)}
-            style={[styles.lockButton, { backgroundColor: theme.colors.card }]}
-          >
-            <Icon name="lock-outline" size={22} color={theme.colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Premium Status Card with Glassmorphism */}
         <Animated.View
-          style={[
-            styles.statusCard,
-            {
-              opacity: fadeAnim,
-              backgroundColor: theme.colors.card,
-              borderColor: theme.colors.border,
-            },
-          ]}
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }}
         >
-          <View style={styles.statusHeader}>
-            <View style={[styles.signalBadge, { backgroundColor: theme.colors.secondary + '20' }]}>
-              <Icon name="signal" size={18} color={theme.colors.secondary} />
-              <Text style={[styles.signalText, { color: theme.colors.secondary }]}>Offline Mode Active</Text>
+          <View style={styles.header}>
+            <View>
+              <Text style={[styles.eyebrow, { color: theme.colors.textSecondary }]}>Offline payments</Text>
+              <Text style={[styles.title, { color: theme.colors.text }]}>NoNet Pay</Text>
             </View>
+            <TouchableOpacity
+              onPress={() => setIsLocked(true)}
+              style={[
+                styles.lockButton,
+                {
+                  backgroundColor: theme.colors.cardElevated,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Icon name="lock-outline" size={20} color={theme.colors.text} />
+            </TouchableOpacity>
           </View>
-          
-          {/* Large Scan Button with Glassmorphism */}
-          <TouchableOpacity
+
+          <View
             style={[
-              styles.scanButton,
+              styles.heroCard,
               {
-                backgroundColor: theme.colors.primary,
-                shadowColor: theme.colors.primary,
+                backgroundColor: theme.colors.cardElevated,
+                borderColor: theme.colors.border,
+                shadowColor: theme.colors.shadow,
               },
             ]}
-            onPress={() => setShowQRScanner(true)}
-            activeOpacity={0.8}
           >
-            <Icon name="qrcode-scan" size={38} color={theme.colors.buttonText} />
-            <Text style={styles.scanButtonText}>Scan any QR</Text>
-            <Text style={styles.scanButtonSubtext}>For instant payment</Text>
-          </TouchableOpacity>
+            <View style={styles.heroHeader}>
+              <View style={[styles.heroPill, { backgroundColor: theme.colors.successContainer }]}>
+                <Icon name="signal" size={14} color={theme.colors.success} />
+                <Text style={[styles.heroPillText, { color: theme.colors.success }]}>Offline mode active</Text>
+              </View>
+              <Text style={[styles.heroKicker, { color: theme.colors.textSecondary }]}>Fastest way to pay</Text>
+            </View>
 
-          <View style={styles.ussdInfo}>
-            <Icon name="phone-outline" size={18} color={theme.colors.textSecondary} />
-            <Text style={[styles.ussdText, { color: theme.colors.textSecondary }]}>Powered by *99# USSD</Text>
+            <Text style={[styles.heroTitle, { color: theme.colors.text }]}>
+              Scan a QR and continue payment even without data.
+            </Text>
+            <Text style={[styles.heroDescription, { color: theme.colors.textSecondary }]}>
+              Built around UPI over USSD so essential transfers stay available on any network.
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.heroButton, { backgroundColor: theme.colors.primary }]}
+              onPress={() => setShowQRScanner(true)}
+              activeOpacity={0.92}
+            >
+              <Icon name="qrcode-scan" size={22} color={theme.colors.buttonText} />
+              <Text style={[styles.heroButtonText, { color: theme.colors.buttonText }]}>Scan payment QR</Text>
+            </TouchableOpacity>
+
+            <View style={styles.metricRow}>
+              <View style={[styles.metricCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+                <Text style={[styles.metricValue, { color: theme.colors.text }]}>*99#</Text>
+                <Text style={[styles.metricLabel, { color: theme.colors.textSecondary }]}>USSD rail</Text>
+              </View>
+              <View style={[styles.metricCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+                <Text style={[styles.metricValue, { color: theme.colors.text }]}>Secure</Text>
+                <Text style={[styles.metricLabel, { color: theme.colors.textSecondary }]}>Biometric lock</Text>
+              </View>
+            </View>
           </View>
-        </Animated.View>
 
-        {/* Quick Actions Grid (4x2) */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            {quickActions.map((action, index) => (
-              <Animated.View
-                key={action.id}
-                style={{
-                  opacity: fadeAnim,
-                  transform: [
-                    {
-                      translateY: slideAnim.interpolate({
-                        inputRange: [0, 50],
-                        outputRange: [0, 50 + index * 5],
-                      }),
-                    },
-                  ],
-                }}
-              >
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Quick actions</Text>
+            <Text style={[styles.sectionCaption, { color: theme.colors.textSecondary }]}>Common tasks, one tap away</Text>
+          </View>
+
+          <View style={styles.actionsGrid}>
+            {quickActions.map(action => {
+              const toneBackground =
+                action.tone === 'primary' ? theme.colors.primaryContainer : theme.colors.surfaceVariant;
+              const toneColor = action.tone === 'primary' ? theme.colors.primary : theme.colors.text;
+
+              return (
                 <TouchableOpacity
+                  key={action.id}
                   style={[
                     styles.actionCard,
                     {
-                      backgroundColor: theme.colors.card,
+                      backgroundColor: theme.colors.cardElevated,
                       borderColor: theme.colors.border,
+                      shadowColor: theme.colors.shadow,
                     },
                   ]}
                   onPress={() => handleActionPress(action)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.88}
                   disabled={loading}
                 >
-                  {loading && (action.id === 'balance' || action.id === 'transactions' || action.id === 'pending' || action.id === 'profile' || action.id === 'upipin') ? (
-                    <ActivityIndicator color={theme.colors.primary} size="small" />
-                  ) : (
-                    <Icon name={action.icon} size={32} color={theme.colors.primary} style={{ opacity: 0.95 }} />
-                  )}
+                  <View style={[styles.actionIconWrap, { backgroundColor: toneBackground }]}>
+                    {loading &&
+                    ['balance', 'transactions', 'pending', 'upipin'].includes(action.id) ? (
+                      <ActivityIndicator size="small" color={theme.colors.primary} />
+                    ) : (
+                      <Icon name={action.icon} size={22} color={toneColor} />
+                    )}
+                  </View>
                   <Text style={[styles.actionTitle, { color: theme.colors.text }]}>{action.title}</Text>
+                  <Text style={[styles.actionSubtitle, { color: theme.colors.textSecondary }]}>
+                    {action.subtitle}
+                  </Text>
                 </TouchableOpacity>
-              </Animated.View>
-            ))}
+              );
+            })}
           </View>
-        </View>
 
-        {/* Security Banner */}
-        <Animated.View
-          style={[
-            styles.securityBanner,
-            {
-              opacity: fadeAnim,
-              backgroundColor: theme.colors.card,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <Icon name="shield-check" size={26} color={theme.colors.success} />
-          <View style={styles.bannerTextContainer}>
-            <Text style={[styles.bannerTitle, { color: theme.colors.text }]}>100% Secure & Private</Text>
-            <Text style={[styles.bannerSubtitle, { color: theme.colors.textSecondary }]}>
-              No data shared • Completely offline
-            </Text>
+          <View
+            style={[
+              styles.banner,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <View style={[styles.bannerIconWrap, { backgroundColor: theme.colors.successContainer }]}>
+              <Icon name="shield-check-outline" size={20} color={theme.colors.success} />
+            </View>
+            <View style={styles.bannerTextWrap}>
+              <Text style={[styles.bannerTitle, { color: theme.colors.text }]}>Private by design</Text>
+              <Text style={[styles.bannerSubtitle, { color: theme.colors.textSecondary }]}>
+                Transactions go through your bank's USSD flow with no dependency on internet connectivity.
+              </Text>
+            </View>
           </View>
         </Animated.View>
-        
-        <View style={{ height: 110 }} />
       </ScrollView>
 
       <QRScanner
         visible={showQRScanner}
         onClose={() => setShowQRScanner(false)}
-        onScan={(upiId) => {
+        onScan={upiId => {
           setShowQRScanner(false);
           navigation.navigate('SendMoney', { upiId });
         }}
@@ -381,6 +396,8 @@ const HomeScreen: React.FC = () => {
     </View>
   );
 };
+
+const cardWidth = (width - 24 * 2 - 12) / 2;
 
 const styles = StyleSheet.create({
   container: {
@@ -390,221 +407,273 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 60,
+    paddingHorizontal: 24,
   },
   header: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
   },
-  greeting: {
-    fontSize: 15,
-    fontWeight: '500',
+  eyebrow: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
     marginBottom: 6,
-    letterSpacing: -0.2,
   },
-  userName: {
-    fontSize: 36,
+  title: {
+    fontSize: 34,
     fontWeight: '700',
-    letterSpacing: -1.2,
+    letterSpacing: -1,
   },
   lockButton: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
+    borderRadius: 18,
     alignItems: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
+    justifyContent: 'center',
+    borderWidth: 1,
   },
-  statusCard: {
-    marginHorizontal: 24,
-    borderRadius: 24,
-    padding: 28,
-    borderWidth: 1.5,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.3,
-    shadowRadius: 24,
+  heroCard: {
+    borderRadius: 28,
+    borderWidth: 1,
+    padding: 24,
+    marginBottom: 28,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.14,
+    shadowRadius: 30,
     elevation: 10,
-    marginBottom: 32,
   },
-  statusHeader: {
-    marginBottom: 20,
-  },
-  signalBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 24,
-    gap: 8,
-  },
-  signalText: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-  },
-  scanButton: {
-    paddingVertical: 32,
-    paddingHorizontal: 36,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.5,
-    shadowRadius: 28,
-    elevation: 15,
-  },
-  scanButtonText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 14,
-    letterSpacing: -0.6,
-  },
-  scanButtonSubtext: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.85)',
-    marginTop: 6,
-    letterSpacing: -0.2,
-  },
-  ussdInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    gap: 6,
-  },
-  ussdText: {
-    fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: -0.2,
-  },
-  section: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
-  },
-  sectionHeader: {
+  heroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: -0.7,
+  heroPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
   },
-  seeAll: {
-    fontSize: 14,
+  heroPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  heroKicker: {
+    fontSize: 12,
     fontWeight: '600',
   },
-  quickActionsGrid: {
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    lineHeight: 34,
+    letterSpacing: -0.8,
+    marginBottom: 10,
+  },
+  heroDescription: {
+    fontSize: 15,
+    lineHeight: 23,
+    marginBottom: 22,
+  },
+  heroButton: {
+    height: 56,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 18,
+  },
+  heroButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  metricRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  metricCard: {
+    flex: 1,
+    borderRadius: 18,
+    padding: 16,
+  },
+  metricValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  metricLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  sectionHeader: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  sectionCaption: {
+    fontSize: 14,
+  },
+  actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 14,
+    marginBottom: 24,
   },
   actionCard: {
-    width: (width - 48 - 42) / 4, // 48 for padding (24*2), 42 for gaps (14*3)
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: cardWidth,
+    minHeight: 156,
     borderRadius: 24,
-    borderWidth: 0.5,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 5,
-  },
-  actionTitle: {
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginTop: 12,
-    lineHeight: 13,
-    letterSpacing: -0.1,
-    paddingHorizontal: 4,
-  },
-  securityBanner: {
-    marginHorizontal: 24,
-    borderRadius: 24,
-    padding: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 18,
-    borderWidth: 0.5,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
+    borderWidth: 1,
+    padding: 18,
+    marginBottom: 12,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
     elevation: 4,
   },
-  bannerTextContainer: {
+  actionIconWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  actionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  actionSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  banner: {
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 18,
+    flexDirection: 'row',
+    gap: 14,
+  },
+  bannerIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerTextWrap: {
     flex: 1,
   },
   bannerTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700',
-    marginBottom: 6,
-    letterSpacing: -0.4,
+    marginBottom: 4,
   },
   bannerSubtitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 18,
-    letterSpacing: -0.2,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  lockDecorTop: {
+    position: 'absolute',
+    top: -80,
+    right: -40,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+  },
+  lockDecorBottom: {
+    position: 'absolute',
+    bottom: -90,
+    left: -50,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
   },
   lockContent: {
     flex: 1,
+    paddingHorizontal: 28,
     justifyContent: 'center',
+  },
+  lockBadge: {
+    width: 88,
+    height: 88,
+    borderRadius: 30,
     alignItems: 'center',
-    paddingHorizontal: 40,
+    justifyContent: 'center',
+    alignSelf: 'center',
+    borderWidth: 1,
+    marginBottom: 24,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.12,
+    shadowRadius: 28,
+    elevation: 8,
   },
   lockTitle: {
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: '700',
-    marginTop: 32,
-    letterSpacing: -0.8,
+    textAlign: 'center',
+    letterSpacing: -1,
+    marginBottom: 8,
   },
   lockSubtitle: {
-    fontSize: 17,
-    marginTop: 14,
-    marginBottom: 54,
-    fontWeight: '500',
-    letterSpacing: -0.2,
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: 'center',
+    marginBottom: 28,
+  },
+  lockCard: {
+    borderRadius: 28,
+    borderWidth: 1,
+    padding: 24,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.12,
+    shadowRadius: 28,
+    elevation: 8,
+  },
+  lockCardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  lockCardBody: {
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 24,
   },
   loadingContainer: {
     alignItems: 'center',
-    marginTop: 40,
+    gap: 12,
   },
   loadingText: {
-    fontSize: 16,
-    marginTop: 18,
-    letterSpacing: -0.2,
+    fontSize: 14,
+    fontWeight: '500',
   },
-  retryButton: {
-    flexDirection: 'row',
+  authButton: {
+    height: 56,
+    borderRadius: 18,
     alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 36,
-    borderRadius: 24,
-    gap: 14,
-    marginTop: 44,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
   },
-  retryButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.3,
+  authButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

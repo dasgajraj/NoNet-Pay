@@ -4,42 +4,45 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
-  StatusBar,
   Animated,
   PanResponder,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
-
-const { width, height } = Dimensions.get('window');
 
 interface OnboardingSlide {
   title: string;
   description: string;
   icon: string;
+  eyebrow: string;
 }
 
 const slides: OnboardingSlide[] = [
   {
-    title: 'Welcome to NoNet Pay',
-    description: 'The secure way to send and receive money using USSD technology without internet connection.',
-    icon: '📱',
+    eyebrow: 'Welcome',
+    title: 'Payments that keep working when data does not.',
+    description: 'NoNet Pay is designed for essential UPI transfers over USSD, so the core experience stays available even offline.',
+    icon: 'cellphone-nfc',
   },
   {
-    title: 'Completely Offline',
-    description: 'No internet required! Works entirely through USSD codes (*99#) supported by all telecom operators in India.',
-    icon: '🔌',
+    eyebrow: 'Offline first',
+    title: 'Built on the trusted *99# banking rail.',
+    description: 'Use supported bank and telecom USSD flows instead of depending on mobile internet for every payment step.',
+    icon: 'signal-distance-variant',
   },
   {
-    title: 'Your Privacy First',
-    description: 'No data is shared with any third party. All transactions happen directly through your bank via USSD.',
-    icon: '🔒',
+    eyebrow: 'Private',
+    title: 'Sensitive steps stay close to your device and bank.',
+    description: 'Requests and transfers are routed through official USSD prompts, while biometric lock helps protect access inside the app.',
+    icon: 'shield-lock-outline',
   },
   {
-    title: 'Fast & Secure',
-    description: 'Make instant UPI payments using just your phone number. No apps, no internet, no compromise on security.',
-    icon: '⚡',
+    eyebrow: 'Ready',
+    title: 'Scan, send, and request with a cleaner flow.',
+    description: 'Modern controls, light and dark themes, and focused actions make the offline payment journey feel simple and dependable.',
+    icon: 'sparkles',
   },
 ];
 
@@ -51,44 +54,48 @@ interface OnboardingScreenProps {
 
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 20;
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx < -50 && currentIndex < slides.length - 1) {
-          handleNext();
-        } else if (gestureState.dx > 50 && currentIndex > 0) {
-          handlePrevious();
-        }
-      },
-    })
-  ).current;
+  const translateY = useRef(new Animated.Value(0)).current;
 
   const animateTransition = () => {
     Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 160,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: 16,
+          duration: 160,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+      ]),
     ]).start();
+  };
+
+  const goToIndex = (index: number) => {
+    animateTransition();
+    setCurrentIndex(index);
   };
 
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
-      animateTransition();
-      setCurrentIndex(currentIndex + 1);
+      goToIndex(currentIndex + 1);
     } else {
       handleComplete();
     }
@@ -96,13 +103,8 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      animateTransition();
-      setCurrentIndex(currentIndex - 1);
+      goToIndex(currentIndex - 1);
     }
-  };
-
-  const handleSkip = async () => {
-    handleComplete();
   };
 
   const handleComplete = async () => {
@@ -115,118 +117,123 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
     }
   };
 
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 20,
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -50 && currentIndex < slides.length - 1) {
+          handleNext();
+        } else if (gestureState.dx > 50 && currentIndex > 0) {
+          handlePrevious();
+        }
+      },
+    }),
+  ).current;
+
   const currentSlide = slides[currentIndex];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={theme.colors.background}
-        translucent
-      />
+      <View style={[styles.decorPrimary, { backgroundColor: theme.colors.primaryContainer }]} />
+      <View style={[styles.decorSecondary, { backgroundColor: theme.colors.surfaceVariant }]} />
 
-      {/* Skip Button */}
-      {currentIndex < slides.length - 1 && (
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-          <Text style={[styles.skipText, { color: theme.colors.textSecondary }]}>
-            Skip
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Main Content - Clickable and Swipeable */}
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={handleNext}
-        style={styles.contentContainer}
-        {...panResponder.panHandlers}
-      >
-        <Animated.View
-          style={[
-            styles.slideContent,
-            {
-              opacity: fadeAnim,
-            },
-          ]}
+      <View style={[styles.topRow, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity
+          onPress={handleComplete}
+          style={[styles.skipButton, { backgroundColor: theme.colors.cardElevated, borderColor: theme.colors.border }]}
         >
-          {/* Icon with Background Circle */}
-          <View style={[styles.iconContainer, { backgroundColor: theme.colors.card }]}>
-            <Text style={styles.icon}>{currentSlide.icon}</Text>
-          </View>
-
-          {/* Title */}
-          <Text style={[styles.title, { color: theme.colors.text }]}>
-            {currentSlide.title}
-          </Text>
-
-          {/* Description */}
-          <Text style={[styles.description, { color: theme.colors.textSecondary }]}>
-            {currentSlide.description}
-          </Text>
-
-          {/* Tap to continue hint */}
-          <Text style={[styles.tapHint, { color: theme.colors.textSecondary }]}>
-            Tap anywhere to continue
-          </Text>
-        </Animated.View>
-      </TouchableOpacity>
-
-      {/* Dots Indicator */}
-      <View style={styles.dotsContainer}>
-        {slides.map((_, index) => (
-          <TouchableOpacity
-            key={index}
-            onPress={() => {
-              animateTransition();
-              setCurrentIndex(index);
-            }}
-          >
-            <View
-              style={[
-                styles.dot,
-                {
-                  width: index === currentIndex ? 32 : 10,
-                  backgroundColor:
-                    index === currentIndex
-                      ? theme.colors.primary
-                      : theme.colors.border,
-                },
-              ]}
-            />
-          </TouchableOpacity>
-        ))}
+          <Text style={[styles.skipText, { color: theme.colors.textSecondary }]}>Skip</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Next/Get Started Button */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            {
-              backgroundColor: theme.colors.primary,
-              shadowColor: theme.colors.primary,
-            },
-          ]}
-          onPress={handleNext}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.buttonText, { color: theme.colors.buttonText }]}>
-            {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Previous button if not on first slide */}
-        {currentIndex > 0 && (
-          <TouchableOpacity
-            style={[styles.backButton, { borderColor: theme.colors.border }]}
-            onPress={handlePrevious}
-            activeOpacity={0.8}
+      <TouchableOpacity
+        activeOpacity={0.96}
+        style={styles.flex}
+        onPress={handleNext}
+        {...panResponder.panHandlers}
+      >
+        <View style={styles.content}>
+          <Animated.View
+            style={[
+              styles.card,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY }],
+                backgroundColor: theme.colors.cardElevated,
+                borderColor: theme.colors.border,
+                shadowColor: theme.colors.shadow,
+              },
+            ]}
           >
-            <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>
-              Back
+            <View style={[styles.iconWrap, { backgroundColor: theme.colors.primaryContainer }]}>
+              <Icon name={currentSlide.icon} size={42} color={theme.colors.primary} />
+            </View>
+
+            <Text style={[styles.eyebrow, { color: theme.colors.textSecondary }]}>{currentSlide.eyebrow}</Text>
+            <Text style={[styles.title, { color: theme.colors.text }]}>{currentSlide.title}</Text>
+            <Text style={[styles.description, { color: theme.colors.textSecondary }]}>
+              {currentSlide.description}
+            </Text>
+
+            <View style={styles.featureRow}>
+              <View style={[styles.featureChip, { backgroundColor: theme.colors.surfaceVariant }]}>
+                <Icon name="wifi-off" size={16} color={theme.colors.text} />
+                <Text style={[styles.featureChipText, { color: theme.colors.text }]}>Offline ready</Text>
+              </View>
+              <View style={[styles.featureChip, { backgroundColor: theme.colors.surfaceVariant }]}>
+                <Icon name="shield-check-outline" size={16} color={theme.colors.text} />
+                <Text style={[styles.featureChipText, { color: theme.colors.text }]}>Bank-backed</Text>
+              </View>
+            </View>
+
+            <Text style={[styles.hint, { color: theme.colors.textTertiary }]}>
+              Tap anywhere or swipe to continue
+            </Text>
+          </Animated.View>
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.bottomArea}>
+        <View style={styles.dotsContainer}>
+          {slides.map((_, index) => {
+            const active = index === currentIndex;
+            return (
+              <TouchableOpacity key={index} onPress={() => goToIndex(index)}>
+                <View
+                  style={[
+                    styles.dot,
+                    {
+                      width: active ? 30 : 10,
+                      backgroundColor: active ? theme.colors.primary : theme.colors.borderStrong,
+                    },
+                  ]}
+                />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 18) }]}>
+          <TouchableOpacity
+            style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
+            onPress={handleNext}
+            activeOpacity={0.9}
+          >
+            <Text style={[styles.primaryButtonText, { color: theme.colors.buttonText }]}>
+              {currentIndex === slides.length - 1 ? 'Get started' : 'Continue'}
             </Text>
           </TouchableOpacity>
-        )}
+
+          {currentIndex > 0 ? (
+            <TouchableOpacity
+              style={[styles.secondaryButton, { borderColor: theme.colors.borderStrong, backgroundColor: theme.colors.cardElevated }]}
+              onPress={handlePrevious}
+              activeOpacity={0.9}
+            >
+              <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>Back</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -236,118 +243,144 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  skipButton: {
+  flex: {
+    flex: 1,
+  },
+  decorPrimary: {
     position: 'absolute',
-    top: 50,
-    right: 24,
-    padding: 12,
-    zIndex: 10,
-    borderRadius: 20,
+    top: -120,
+    right: -60,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
   },
-  skipText: {
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: -0.3,
+  decorSecondary: {
+    position: 'absolute',
+    bottom: -120,
+    left: -80,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
   },
-  contentContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingTop: 80,
-    paddingBottom: 40,
-  },
-  slideContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  iconContainer: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 48,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  icon: {
-    fontSize: 88,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 24,
-    letterSpacing: -0.8,
+  topRow: {
+    alignItems: 'flex-end',
     paddingHorizontal: 20,
   },
-  description: {
-    fontSize: 17,
-    textAlign: 'center',
-    lineHeight: 26,
-    marginBottom: 32,
-    paddingHorizontal: 10,
-    letterSpacing: -0.3,
+  skipButton: {
+    height: 42,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
-  tapHint: {
+  skipText: {
     fontSize: 14,
+    fontWeight: '700',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  card: {
+    borderWidth: 1,
+    borderRadius: 32,
+    padding: 28,
+    minHeight: 500,
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.14,
+    shadowRadius: 32,
+    elevation: 10,
+  },
+  iconWrap: {
+    width: 84,
+    height: 84,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  eyebrow: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: '700',
+    lineHeight: 36,
+    letterSpacing: -0.9,
+    marginBottom: 14,
+  },
+  description: {
+    fontSize: 16,
+    lineHeight: 25,
+    marginBottom: 24,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  featureChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  featureChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  hint: {
+    fontSize: 13,
     fontWeight: '500',
-    opacity: 0.6,
-    marginTop: 24,
-    letterSpacing: -0.2,
+  },
+  bottomArea: {
+    paddingHorizontal: 20,
   },
   dotsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
     gap: 8,
+    marginBottom: 18,
   },
   dot: {
     height: 10,
-    borderRadius: 5,
-    marginHorizontal: 4,
-    transition: 'all 0.3s',
+    borderRadius: 999,
   },
-  buttonContainer: {
-    paddingHorizontal: 32,
-    paddingBottom: 48,
+  actions: {
     gap: 12,
   },
-  button: {
-    height: 60,
-    borderRadius: 24,
+  primaryButton: {
+    height: 58,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
   },
-  buttonText: {
-    fontSize: 19,
+  primaryButtonText: {
+    fontSize: 17,
     fontWeight: '700',
-    letterSpacing: -0.4,
   },
-  backButton: {
-    height: 60,
-    borderRadius: 24,
+  secondaryButton: {
+    height: 54,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: 1,
   },
-  backButtonText: {
-    fontSize: 19,
+  secondaryButtonText: {
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: -0.4,
   },
 });
 

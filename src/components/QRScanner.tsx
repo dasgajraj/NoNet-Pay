@@ -26,7 +26,8 @@ import {
   State as GestureState,
 } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors } from '../constants/styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
 import Log from '../services/Logger';
 
 const TAG = 'QRScanner';
@@ -50,6 +51,8 @@ interface QRScannerProps {
 }
 
 const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
+  const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('back');
   const cameraRef = useRef<Camera>(null);
@@ -70,7 +73,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
 
   const zoomNormalizedToCamera = useCallback(
     (normalized: number) => minCameraZoom + normalized * (maxCameraZoom - minCameraZoom),
-    [minCameraZoom, maxCameraZoom],
+    [maxCameraZoom, minCameraZoom],
   );
 
   const cameraZoom = zoomNormalizedToCamera(zoomNormalized);
@@ -81,8 +84,6 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
     }
     if (visible) {
       setScanning(true);
-    }
-    if (visible) {
       setZoomNormalized(0);
       Log.info(TAG, 'Scanner opened');
     }
@@ -95,7 +96,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
 
     try {
       LightSensor.startListening();
-    } catch (e) {
+    } catch (error) {
       Log.warn(TAG, 'Could not start light sensor listener');
       return;
     }
@@ -107,9 +108,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
       if (measuredLux === null) return;
 
       const prevSmoothed = smoothedLuxRef.current;
-      const smoothed = prevSmoothed == null
-        ? measuredLux
-        : prevSmoothed * 0.7 + measuredLux * 0.3;
+      const smoothed = prevSmoothed == null ? measuredLux : prevSmoothed * 0.7 + measuredLux * 0.3;
       smoothedLuxRef.current = smoothed;
 
       if (manualTorch) return;
@@ -137,7 +136,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
       sub.remove();
       try {
         LightSensor.stopListening();
-      } catch (e) {
+      } catch (error) {
         Log.warn(TAG, 'Could not stop light sensor listener');
       }
     };
@@ -157,63 +156,72 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
     }
   }, [visible]);
 
-  const clampZoom = useCallback((value: number) => {
-    return Math.max(0, Math.min(1, value));
-  }, []);
+  const clampZoom = useCallback((value: number) => Math.max(0, Math.min(1, value)), []);
 
-  const smoothZoomTo = useCallback((target: number) => {
-    const safeTarget = clampZoom(target);
-    if (Math.abs(safeTarget - zoomNormalized) < 0.02) return;
+  const smoothZoomTo = useCallback(
+    (target: number) => {
+      const safeTarget = clampZoom(target);
+      if (Math.abs(safeTarget - zoomNormalized) < 0.02) return;
 
-    if (zoomAnimRef.current) {
-      clearInterval(zoomAnimRef.current);
-    }
-
-    const start = zoomNormalized;
-    const steps = 8;
-    let step = 0;
-    const stepDelta = (safeTarget - start) / steps;
-
-    zoomAnimRef.current = setInterval(() => {
-      step += 1;
-      setZoomNormalized(prev => clampZoom(prev + stepDelta));
-      if (step >= steps && zoomAnimRef.current) {
+      if (zoomAnimRef.current) {
         clearInterval(zoomAnimRef.current);
-        zoomAnimRef.current = null;
       }
-    }, 35);
-  }, [clampZoom, zoomNormalized]);
 
-  const autoZoomToCode = useCallback((code: Code, frame?: CodeScannerFrame) => {
-    if (!code?.frame || !frame) return;
+      const start = zoomNormalized;
+      const steps = 8;
+      let step = 0;
+      const stepDelta = (safeTarget - start) / steps;
 
-    const codeWidth = code.frame.width ?? 0;
-    const codeHeight = code.frame.height ?? 0;
-    const frameWidth = frame.width ?? 1;
-    const frameHeight = frame.height ?? 1;
-    if (codeWidth <= 0 || codeHeight <= 0 || frameWidth <= 0 || frameHeight <= 0) return;
+      zoomAnimRef.current = setInterval(() => {
+        step += 1;
+        setZoomNormalized(prev => clampZoom(prev + stepDelta));
+        if (step >= steps && zoomAnimRef.current) {
+          clearInterval(zoomAnimRef.current);
+          zoomAnimRef.current = null;
+        }
+      }, 35);
+    },
+    [clampZoom, zoomNormalized],
+  );
 
-    const coverage = (codeWidth * codeHeight) / (frameWidth * frameHeight);
-    if (coverage >= 0.03) return;
+  const autoZoomToCode = useCallback(
+    (code: Code, frame?: CodeScannerFrame) => {
+      if (!code?.frame || !frame) return;
 
-    const targetCoverage = 0.15;
-    const magnification = Math.sqrt(targetCoverage / coverage);
-    const targetZoom = clampZoom(zoomNormalized + Math.min(0.5, (magnification - 1) * 0.25));
+      const codeWidth = code.frame.width ?? 0;
+      const codeHeight = code.frame.height ?? 0;
+      const frameWidth = frame.width ?? 1;
+      const frameHeight = frame.height ?? 1;
+      if (codeWidth <= 0 || codeHeight <= 0 || frameWidth <= 0 || frameHeight <= 0) return;
 
-    smoothZoomTo(targetZoom);
-  }, [clampZoom, smoothZoomTo, zoomNormalized]);
+      const coverage = (codeWidth * codeHeight) / (frameWidth * frameHeight);
+      if (coverage >= 0.03) return;
 
-  const onPinchGestureEvent = useCallback((event: PinchGestureHandlerGestureEvent) => {
-    const scale = event.nativeEvent.scale;
-    const nextZoom = clampZoom(pinchStartZoom.current + (scale - 1) * 0.35);
-    setZoomNormalized(nextZoom);
-  }, [clampZoom]);
+      const targetCoverage = 0.15;
+      const magnification = Math.sqrt(targetCoverage / coverage);
+      const targetZoom = clampZoom(zoomNormalized + Math.min(0.5, (magnification - 1) * 0.25));
+      smoothZoomTo(targetZoom);
+    },
+    [clampZoom, smoothZoomTo, zoomNormalized],
+  );
 
-  const onPinchStateChange = useCallback((event: any) => {
-    if (event.nativeEvent.state === GestureState.BEGAN) {
-      pinchStartZoom.current = zoomNormalized;
-    }
-  }, [zoomNormalized]);
+  const onPinchGestureEvent = useCallback(
+    (event: PinchGestureHandlerGestureEvent) => {
+      const scale = event.nativeEvent.scale;
+      const nextZoom = clampZoom(pinchStartZoom.current + (scale - 1) * 0.35);
+      setZoomNormalized(nextZoom);
+    },
+    [clampZoom],
+  );
+
+  const onPinchStateChange = useCallback(
+    (event: any) => {
+      if (event.nativeEvent.state === GestureState.BEGAN) {
+        pinchStartZoom.current = zoomNormalized;
+      }
+    },
+    [zoomNormalized],
+  );
 
   const codeScanner = useCodeScanner({
     codeTypes: ['qr'],
@@ -222,12 +230,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
 
       const data = codes[0].value;
       autoZoomToCode(codes[0], frame);
-      
+
       if (data && data.startsWith('upi://pay')) {
         try {
           const url = new URL(data);
           const upiId = url.searchParams.get('pa');
-          
+
           if (upiId) {
             setScanning(false);
             Vibration.vibrate([0, 100, 100, 100]);
@@ -252,21 +260,29 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
 
   if (!hasPermission) {
     return (
-      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-        <View style={scannerStyles.permissionContainer}>
-          <Text style={scannerStyles.permissionText}>Camera permission is required</Text>
-          <TouchableOpacity
-            style={scannerStyles.permissionButton}
-            onPress={requestPermission}
-          >
-            <Text style={scannerStyles.permissionButtonText}>Grant Permission</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[scannerStyles.permissionButton, { marginTop: 10 }]}
-            onPress={onClose}
-          >
-            <Text style={scannerStyles.permissionButtonText}>Close</Text>
-          </TouchableOpacity>
+      <Modal visible={visible} animationType="fade" onRequestClose={onClose}>
+        <View style={[styles.permissionContainer, { backgroundColor: theme.colors.background }]}>
+          <View style={[styles.permissionCard, { backgroundColor: theme.colors.cardElevated, borderColor: theme.colors.border }]}>
+            <View style={[styles.permissionIconWrap, { backgroundColor: theme.colors.primaryContainer }]}>
+              <Icon name="camera-outline" size={28} color={theme.colors.primary} />
+            </View>
+            <Text style={[styles.permissionTitle, { color: theme.colors.text }]}>Camera permission required</Text>
+            <Text style={[styles.permissionText, { color: theme.colors.textSecondary }]}>
+              We need camera access to scan UPI QR codes and prefill payments.
+            </Text>
+            <TouchableOpacity
+              style={[styles.permissionButton, { backgroundColor: theme.colors.primary }]}
+              onPress={requestPermission}
+            >
+              <Text style={[styles.permissionButtonText, { color: theme.colors.buttonText }]}>Grant permission</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.secondaryButton, { borderColor: theme.colors.borderStrong }]}
+              onPress={onClose}
+            >
+              <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>Close</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     );
@@ -274,12 +290,20 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
 
   if (!device) {
     return (
-      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-        <View style={scannerStyles.permissionContainer}>
-          <Text style={scannerStyles.permissionText}>No camera device found</Text>
-          <TouchableOpacity style={scannerStyles.permissionButton} onPress={onClose}>
-            <Text style={scannerStyles.permissionButtonText}>Close</Text>
-          </TouchableOpacity>
+      <Modal visible={visible} animationType="fade" onRequestClose={onClose}>
+        <View style={[styles.permissionContainer, { backgroundColor: theme.colors.background }]}>
+          <View style={[styles.permissionCard, { backgroundColor: theme.colors.cardElevated, borderColor: theme.colors.border }]}>
+            <Text style={[styles.permissionTitle, { color: theme.colors.text }]}>Camera unavailable</Text>
+            <Text style={[styles.permissionText, { color: theme.colors.textSecondary }]}>
+              No supported camera device was found on this device.
+            </Text>
+            <TouchableOpacity
+              style={[styles.permissionButton, { backgroundColor: theme.colors.primary }]}
+              onPress={onClose}
+            >
+              <Text style={[styles.permissionButtonText, { color: theme.colors.buttonText }]}>Close</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     );
@@ -288,13 +312,13 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
   const effectiveTorch = manualTorch || autoTorch;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <GestureHandlerRootView style={scannerStyles.container}>
+    <Modal visible={visible} animationType="fade" onRequestClose={onClose} transparent>
+      <GestureHandlerRootView style={styles.flex}>
         <PinchGestureHandler
           onGestureEvent={onPinchGestureEvent}
           onHandlerStateChange={onPinchStateChange}
         >
-          <View style={scannerStyles.container}>
+          <View style={styles.flex}>
             <Camera
               ref={cameraRef}
               style={StyleSheet.absoluteFill}
@@ -306,50 +330,64 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
               lowLightBoost={true}
             />
 
-            <View style={scannerStyles.overlay} pointerEvents="none">
-              <Text style={scannerStyles.title}>Scan UPI QR Code</Text>
-              <View style={scannerStyles.scanArea} />
-              <Text style={scannerStyles.instruction}>Use pinch to zoom. Keep QR inside frame.</Text>
-            </View>
+            <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}>
+              <View style={[styles.topOverlay, { paddingTop: insets.top + 12 }]}>
+                <TouchableOpacity
+                  style={[styles.controlButton, { backgroundColor: theme.colors.overlay }]}
+                  onPress={() => {
+                    setScanning(true);
+                    onClose();
+                  }}
+                >
+                  <Icon name="close" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
 
-            <View style={scannerStyles.controls}>
-              <TouchableOpacity
-                style={[scannerStyles.iconButton, effectiveTorch && scannerStyles.iconButtonActive]}
-                onPress={() => {
-                  const next = !manualTorch;
-                  setManualTorch(next);
-                  if (!next) {
-                    setAutoTorch((lux ?? 100) < LOW_LIGHT_LUX);
-                  }
-                }}
-              >
-                <Icon
-                  name={effectiveTorch ? 'flashlight' : 'flashlight-off'}
-                  size={20}
-                  color="#fff"
-                />
-              </TouchableOpacity>
+                <View style={[styles.badge, { backgroundColor: theme.colors.overlay }]}>
+                  <Text style={styles.badgeText}>{`Zoom ${cameraZoom.toFixed(2)}x`}</Text>
+                </View>
 
-              <View style={scannerStyles.badge}>
-                <Text style={scannerStyles.badgeText}>{`Zoom ${cameraZoom.toFixed(2)}x`}</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.controlButton,
+                    { backgroundColor: effectiveTorch ? 'rgba(255, 210, 122, 0.3)' : theme.colors.overlay },
+                  ]}
+                  onPress={() => {
+                    const next = !manualTorch;
+                    setManualTorch(next);
+                    if (!next) {
+                      setAutoTorch((lux ?? 100) < LOW_LIGHT_LUX);
+                    }
+                  }}
+                >
+                  <Icon name={effectiveTorch ? 'flashlight' : 'flashlight-off'} size={20} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
 
-              <TouchableOpacity
-                style={scannerStyles.iconButton}
-                onPress={() => {
-                  setScanning(true);
-                  onClose();
-                }}
-              >
-                <Icon name="close" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            {lux !== null && (
-              <View style={scannerStyles.luxPill}>
-                <Text style={scannerStyles.luxText}>{`Light ${lux.toFixed(0)} lx`}</Text>
+              <View style={styles.centerOverlay} pointerEvents="none">
+                <Text style={styles.title}>Scan UPI QR</Text>
+                <Text style={styles.subtitle}>Keep the code inside the frame. Pinch to zoom if needed.</Text>
+                <View style={[styles.scanArea, { borderColor: theme.colors.primary }]}>
+                  <View style={[styles.corner, styles.topLeft, { borderColor: theme.colors.primary }]} />
+                  <View style={[styles.corner, styles.topRight, { borderColor: theme.colors.primary }]} />
+                  <View style={[styles.corner, styles.bottomLeft, { borderColor: theme.colors.primary }]} />
+                  <View style={[styles.corner, styles.bottomRight, { borderColor: theme.colors.primary }]} />
+                </View>
               </View>
-            )}
+
+              <View style={[styles.bottomOverlay, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+                <View style={[styles.tipCard, { backgroundColor: theme.colors.overlay }]}>
+                  <Text style={styles.tipTitle}>Offline-friendly flow</Text>
+                  <Text style={styles.tipText}>
+                    We extract the UPI ID and bring you straight into the send money screen.
+                  </Text>
+                </View>
+                {lux !== null ? (
+                  <View style={[styles.luxPill, { backgroundColor: theme.colors.overlay }]}>
+                    <Text style={styles.luxText}>{`Ambient light ${lux.toFixed(0)} lx`}</Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
           </View>
         </PinchGestureHandler>
       </GestureHandlerRootView>
@@ -357,116 +395,183 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
   );
 };
 
-const scannerStyles = StyleSheet.create({
-  container: {
+const styles = StyleSheet.create({
+  flex: {
     flex: 1,
-    backgroundColor: '#000',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+  },
+  topOverlay: {
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    pointerEvents: 'none',
+  },
+  controlButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    minWidth: SCREEN_W * 0.34,
+    height: 42,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  centerOverlay: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 40,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '700',
+    letterSpacing: -0.7,
+    marginBottom: 8,
+  },
+  subtitle: {
+    color: 'rgba(255,255,255,0.86)',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 30,
   },
   scanArea: {
     width: SCAN_AREA,
     height: SCAN_AREA,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: 20,
+    borderRadius: 30,
+    borderWidth: 1.5,
     backgroundColor: 'transparent',
   },
-  instruction: {
-    fontSize: 16,
-    color: '#fff',
-    marginTop: 40,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
-  },
-  controls: {
+  corner: {
     position: 'absolute',
-    top: 48,
-    left: 16,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconButtonActive: {
-    backgroundColor: 'rgba(255,193,7,0.55)',
-  },
-  badge: {
-    minWidth: SCREEN_W * 0.36,
-    paddingHorizontal: 14,
+    width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: '#FFFFFF',
   },
-  badgeText: {
-    color: '#fff',
-    fontSize: 13,
+  topLeft: {
+    top: 12,
+    left: 12,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderTopLeftRadius: 14,
+  },
+  topRight: {
+    top: 12,
+    right: 12,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
+    borderTopRightRadius: 14,
+  },
+  bottomLeft: {
+    bottom: 12,
+    left: 12,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+    borderBottomLeftRadius: 14,
+  },
+  bottomRight: {
+    bottom: 12,
+    right: 12,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderBottomRightRadius: 14,
+  },
+  bottomOverlay: {
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  tipCard: {
+    width: '100%',
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 12,
+  },
+  tipTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '700',
+    marginBottom: 6,
+  },
+  tipText: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 13,
+    lineHeight: 20,
   },
   luxPill: {
-    position: 'absolute',
-    bottom: 48,
-    alignSelf: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
   },
   luxText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   permissionContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    justifyContent: 'center',
     padding: 20,
   },
+  permissionCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 28,
+    borderWidth: 1,
+    padding: 24,
+  },
+  permissionIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  permissionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginBottom: 8,
+  },
   permissionText: {
-    color: '#fff',
-    fontSize: 18,
-    textAlign: 'center',
+    fontSize: 14,
+    lineHeight: 21,
     marginBottom: 20,
   },
   permissionButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 25,
+    height: 54,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
   permissionButtonText: {
-    color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    height: 54,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 
