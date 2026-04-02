@@ -78,11 +78,13 @@ const RequestMoneyScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingTop: insets.top + 18,
-          paddingHorizontal: 20,
-          paddingBottom: 140 + insets.bottom,
-        }}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: insets.top + 18,
+            paddingBottom: 140 + insets.bottom,
+          },
+        ]}
       >
         <Animated.View
           style={{
@@ -138,13 +140,13 @@ const RequestMoneyScreen: React.FC = () => {
             <View style={[styles.segmentedControl, { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.border }]}>
               {(['upi', 'mobile'] as const).map(type => {
                 const active = inputType === type;
+                const segmentStyle = {
+                  backgroundColor: active ? theme.colors.primary : 'transparent',
+                };
                 return (
                   <TouchableOpacity
                     key={type}
-                    style={[
-                      styles.segmentButton,
-                      { backgroundColor: active ? theme.colors.primary : 'transparent' },
-                    ]}
+                    style={[styles.segmentButton, segmentStyle]}
                     onPress={() => {
                       Vibration.vibrate(40);
                       setInputType(type);
@@ -294,6 +296,9 @@ const RequestMoneyScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
   },
   topBar: {
     flexDirection: 'row',

@@ -96,7 +96,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
 
     try {
       LightSensor.startListening();
-    } catch (error) {
+    } catch {
       Log.warn(TAG, 'Could not start light sensor listener');
       return;
     }
@@ -136,7 +136,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
       sub.remove();
       try {
         LightSensor.stopListening();
-      } catch (error) {
+      } catch {
         Log.warn(TAG, 'Could not stop light sensor listener');
       }
     };
@@ -249,7 +249,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
               setScanning(true);
             }, 300);
           }
-        } catch (error) {
+        } catch {
           Log.warn(TAG, 'Error parsing UPI QR code');
         }
       }
@@ -310,6 +310,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
   }
 
   const effectiveTorch = manualTorch || autoTorch;
+  const torchButtonStyle = {
+    backgroundColor: effectiveTorch ? 'rgba(255, 210, 122, 0.3)' : theme.colors.overlay,
+  };
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={onClose} transparent>
@@ -347,10 +350,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
                 </View>
 
                 <TouchableOpacity
-                  style={[
-                    styles.controlButton,
-                    { backgroundColor: effectiveTorch ? 'rgba(255, 210, 122, 0.3)' : theme.colors.overlay },
-                  ]}
+                  style={[styles.controlButton, torchButtonStyle]}
                   onPress={() => {
                     const next = !manualTorch;
                     setManualTorch(next);

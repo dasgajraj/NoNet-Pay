@@ -10,7 +10,10 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '../context/ThemeContext';
+import { RootStackParamList } from '../navigation/AppNavigator';
 
 interface OnboardingSlide {
   title: string;
@@ -49,12 +52,15 @@ const slides: OnboardingSlide[] = [
 const ONBOARDING_KEY = '@nonetpay_onboarding_completed';
 
 interface OnboardingScreenProps {
-  onComplete: () => void;
+  onComplete?: () => void;
 }
+
+type OnboardingNavigationProp = StackNavigationProp<RootStackParamList, 'Onboarding'>;
 
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<OnboardingNavigationProp>();
   const [currentIndex, setCurrentIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const translateY = useRef(new Animated.Value(0)).current;
@@ -110,10 +116,18 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const handleComplete = async () => {
     try {
       await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-      onComplete();
+      if (onComplete) {
+        onComplete();
+      } else {
+        navigation.replace('MainTabs');
+      }
     } catch (error) {
       console.error('Failed to save onboarding status:', error);
-      onComplete();
+      if (onComplete) {
+        onComplete();
+      } else {
+        navigation.replace('MainTabs');
+      }
     }
   };
 
@@ -197,17 +211,13 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
         <View style={styles.dotsContainer}>
           {slides.map((_, index) => {
             const active = index === currentIndex;
+            const dotStyle = {
+              width: active ? 30 : 10,
+              backgroundColor: active ? theme.colors.primary : theme.colors.borderStrong,
+            };
             return (
               <TouchableOpacity key={index} onPress={() => goToIndex(index)}>
-                <View
-                  style={[
-                    styles.dot,
-                    {
-                      width: active ? 30 : 10,
-                      backgroundColor: active ? theme.colors.primary : theme.colors.borderStrong,
-                    },
-                  ]}
-                />
+                <View style={[styles.dot, dotStyle]} />
               </TouchableOpacity>
             );
           })}

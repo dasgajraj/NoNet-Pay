@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -48,6 +48,31 @@ const HomeScreen: React.FC = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(36)).current;
 
+  const handleBiometricAuth = useCallback(async () => {
+    setLoading(true);
+    const success = await authenticateWithBiometric('Unlock NoNet Pay');
+    setLoading(false);
+
+    if (success) {
+      setIsLocked(false);
+    }
+  }, [setIsLocked]);
+
+  const initBiometric = useCallback(async () => {
+    try {
+      const { available, biometryType: detectedBiometryType } = await checkBiometricAvailability();
+      if (available && detectedBiometryType) {
+        setBiometryType(getBiometricName(detectedBiometryType));
+        handleBiometricAuth();
+      } else {
+        setIsLocked(false);
+      }
+    } catch (error) {
+      console.error('Error initializing biometric:', error);
+      setIsLocked(false);
+    }
+  }, [handleBiometricAuth, setIsLocked]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       initBiometric();
@@ -55,7 +80,7 @@ const HomeScreen: React.FC = () => {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [initBiometric]);
 
   useEffect(() => {
     if (!isLocked) {
@@ -73,31 +98,6 @@ const HomeScreen: React.FC = () => {
       ]).start();
     }
   }, [fadeAnim, isLocked, slideAnim]);
-
-  const initBiometric = async () => {
-    try {
-      const { available, biometryType: detectedBiometryType } = await checkBiometricAvailability();
-      if (available && detectedBiometryType) {
-        setBiometryType(getBiometricName(detectedBiometryType));
-        handleBiometricAuth();
-      } else {
-        setIsLocked(false);
-      }
-    } catch (error) {
-      console.error('Error initializing biometric:', error);
-      setIsLocked(false);
-    }
-  };
-
-  const handleBiometricAuth = async () => {
-    setLoading(true);
-    const success = await authenticateWithBiometric('Unlock NoNet Pay');
-    setLoading(false);
-
-    if (success) {
-      setIsLocked(false);
-    }
-  };
 
   const quickActions: QuickAction[] = [
     {

@@ -49,6 +49,9 @@ const CustomBottomTab: React.FC<CustomBottomTabProps> = ({
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
           const meta = routeMeta[route.name] ?? routeMeta.Home;
+          const tabPillStyle = {
+            backgroundColor: isFocused ? theme.colors.primaryContainer : 'transparent',
+          };
 
           const onPress = () => {
             const event = navigation.emit({
@@ -74,12 +77,7 @@ const CustomBottomTab: React.FC<CustomBottomTabProps> = ({
               style={styles.tabItem}
             >
               <View
-                style={[
-                  styles.tabPill,
-                  {
-                    backgroundColor: isFocused ? theme.colors.primaryContainer : 'transparent',
-                  },
-                ]}
+                style={[styles.tabPill, tabPillStyle]}
               >
                 <Icon
                   name={isFocused ? meta.activeIcon : meta.icon}

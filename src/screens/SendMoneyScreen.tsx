@@ -88,11 +88,13 @@ const SendMoneyScreen: React.FC = () => {
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingTop: insets.top + 18,
-            paddingHorizontal: 20,
-            paddingBottom: 180 + insets.bottom,
-          }}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingTop: insets.top + 18,
+              paddingBottom: 180 + insets.bottom,
+            },
+          ]}
         >
           <Animated.View
             style={{
@@ -308,6 +310,9 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
   },
   topBar: {
     flexDirection: 'row',

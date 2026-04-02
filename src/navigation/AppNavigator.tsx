@@ -29,6 +29,14 @@ export type MainTabParamList = {
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+const TabBar = ({ isLocked, onScanPress, ...props }: any) => {
+  if (isLocked) {
+    return null;
+  }
+
+  return <CustomBottomTab {...props} onScanPress={onScanPress} />;
+};
+
 const MainTabs: React.FC = () => {
   const { isLocked } = useAuth();
   const [showScanner, setShowScanner] = useState(false);
@@ -36,9 +44,8 @@ const MainTabs: React.FC = () => {
   return (
     <>
       <Tab.Navigator
-        tabBar={props =>
-          !isLocked ? <CustomBottomTab {...props} onScanPress={() => setShowScanner(true)} /> : null
-        }
+        // eslint-disable-next-line react/no-unstable-nested-components
+        tabBar={props => <TabBar {...props} isLocked={isLocked} onScanPress={() => setShowScanner(true)} />}
         screenOptions={{
           headerShown: false,
         }}
@@ -111,9 +118,11 @@ const AppNavigator: React.FC = () => {
           }}
         >
           {!hasCompletedOnboarding && (
-            <Stack.Screen name="Onboarding">
-              {() => <OnboardingScreen onComplete={() => setHasCompletedOnboarding(true)} />}
-            </Stack.Screen>
+            <Stack.Screen
+              name="Onboarding"
+              component={OnboardingScreen}
+              options={{ gestureEnabled: false }}
+            />
           )}
           <Stack.Screen name="MainTabs" component={MainTabs} />
         </Stack.Navigator>
