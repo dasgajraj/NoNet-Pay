@@ -1,5 +1,6 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationDefaultTheme, Theme as NavigationTheme, useColorScheme } from '@react-navigation/native';
+import { DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationDefaultTheme, Theme as NavigationTheme } from '@react-navigation/native';
+import { useColorScheme } from 'react-native';
 
 export interface Theme {
   dark: boolean;

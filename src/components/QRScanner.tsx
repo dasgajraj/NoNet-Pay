@@ -62,6 +62,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
   const [autoTorch, setAutoTorch] = useState(false);
   const [lux, setLux] = useState<number | null>(null);
   const [zoomNormalized, setZoomNormalized] = useState(0);
+  const [cameraErrorMessage, setCameraErrorMessage] = useState<string | null>(null);
 
   const pinchStartZoom = useRef(0);
   const zoomAnimRef = useRef<NodeJS.Timeout | null>(null);
@@ -85,6 +86,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
     if (visible) {
       setScanning(true);
       setZoomNormalized(0);
+      setCameraErrorMessage(null);
       Log.info(TAG, 'Scanner opened');
     }
   }, [visible, hasPermission, requestPermission]);
@@ -148,6 +150,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
       setAutoTorch(false);
       setLux(null);
       setZoomNormalized(0);
+      setCameraErrorMessage(null);
       smoothedLuxRef.current = null;
       if (zoomAnimRef.current) {
         clearInterval(zoomAnimRef.current);
@@ -313,6 +316,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
   const torchButtonStyle = {
     backgroundColor: effectiveTorch ? 'rgba(255, 210, 122, 0.3)' : theme.colors.overlay,
   };
+  const showCameraRuntimeFallback = cameraErrorMessage !== null;
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={onClose} transparent>
@@ -322,16 +326,30 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
           onHandlerStateChange={onPinchStateChange}
         >
           <View style={styles.flex}>
-            <Camera
-              ref={cameraRef}
-              style={StyleSheet.absoluteFill}
-              device={device}
-              isActive={visible && scanning}
-              codeScanner={codeScanner}
-              zoom={cameraZoom}
-              torch={effectiveTorch ? 'on' : 'off'}
-              lowLightBoost={true}
-            />
+            {!showCameraRuntimeFallback ? (
+              <Camera
+                ref={cameraRef}
+                style={StyleSheet.absoluteFill}
+                device={device}
+                isActive={visible && scanning}
+                codeScanner={codeScanner}
+                zoom={cameraZoom}
+                torch={effectiveTorch ? 'on' : 'off'}
+                lowLightBoost={true}
+                onError={error => {
+                  const normalizedMessage =
+                    error.code === 'system/camera-is-restricted'
+                      ? 'Camera access is restricted by your device or work profile policy.'
+                      : error.message || 'Camera is unavailable right now.';
+
+                  Log.warn(TAG, `Camera error: ${error.code}`);
+                  setScanning(false);
+                  setCameraErrorMessage(normalizedMessage);
+                }}
+              />
+            ) : (
+              <View style={[StyleSheet.absoluteFill, styles.runtimeFallback, { backgroundColor: theme.colors.background }]} />
+            )}
 
             <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}>
               <View style={[styles.topOverlay, { paddingTop: insets.top + 12 }]}>
@@ -363,16 +381,39 @@ const QRScanner: React.FC<QRScannerProps> = ({ visible, onClose, onScan }) => {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.centerOverlay} pointerEvents="none">
-                <Text style={styles.title}>Scan UPI QR</Text>
-                <Text style={styles.subtitle}>Keep the code inside the frame. Pinch to zoom if needed.</Text>
-                <View style={[styles.scanArea, { borderColor: theme.colors.primary }]}>
-                  <View style={[styles.corner, styles.topLeft, { borderColor: theme.colors.primary }]} />
-                  <View style={[styles.corner, styles.topRight, { borderColor: theme.colors.primary }]} />
-                  <View style={[styles.corner, styles.bottomLeft, { borderColor: theme.colors.primary }]} />
-                  <View style={[styles.corner, styles.bottomRight, { borderColor: theme.colors.primary }]} />
+              {showCameraRuntimeFallback ? (
+                <View style={styles.centerOverlay}>
+                  <View style={[styles.errorCard, { backgroundColor: theme.colors.cardElevated, borderColor: theme.colors.border }]}>
+                    <View style={[styles.errorIconWrap, { backgroundColor: theme.colors.warningContainer }]}>
+                      <Icon name="camera-off-outline" size={28} color={theme.colors.warning} />
+                    </View>
+                    <Text style={[styles.errorTitle, { color: theme.colors.text }]}>Scanner unavailable</Text>
+                    <Text style={[styles.errorBody, { color: theme.colors.textSecondary }]}>
+                      {cameraErrorMessage}
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.errorButton, { backgroundColor: theme.colors.primary }]}
+                      onPress={() => {
+                        setCameraErrorMessage(null);
+                        setScanning(true);
+                      }}
+                    >
+                      <Text style={[styles.errorButtonText, { color: theme.colors.buttonText }]}>Try again</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
+              ) : (
+                <View style={styles.centerOverlay} pointerEvents="none">
+                  <Text style={styles.title}>Scan UPI QR</Text>
+                  <Text style={styles.subtitle}>Keep the code inside the frame. Pinch to zoom if needed.</Text>
+                  <View style={[styles.scanArea, { borderColor: theme.colors.primary }]}>
+                    <View style={[styles.corner, styles.topLeft, { borderColor: theme.colors.primary }]} />
+                    <View style={[styles.corner, styles.topRight, { borderColor: theme.colors.primary }]} />
+                    <View style={[styles.corner, styles.bottomLeft, { borderColor: theme.colors.primary }]} />
+                    <View style={[styles.corner, styles.bottomRight, { borderColor: theme.colors.primary }]} />
+                  </View>
+                </View>
+              )}
 
               <View style={[styles.bottomOverlay, { paddingBottom: Math.max(insets.bottom, 24) }]}>
                 <View style={[styles.tipCard, { backgroundColor: theme.colors.overlay }]}>
@@ -433,6 +474,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
   },
+  runtimeFallback: {
+    flex: 1,
+  },
   title: {
     color: '#FFFFFF',
     fontSize: 26,
@@ -487,6 +531,44 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderRightWidth: 3,
     borderBottomRightRadius: 14,
+  },
+  errorCard: {
+    width: '100%',
+    borderRadius: 28,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+  },
+  errorIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginBottom: 8,
+  },
+  errorBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  errorButton: {
+    minWidth: 140,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   bottomOverlay: {
     paddingHorizontal: 20,
