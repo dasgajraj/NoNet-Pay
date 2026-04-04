@@ -23,6 +23,7 @@ import { useTheme } from '../context/ThemeContext';
 type RequestMoneyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'RequestMoney'>;
 
 const quickAmounts = [50, 100, 250, 500, 1000, 2000];
+const TAB_BAR_OFFSET = 110;
 
 const RequestMoneyScreen: React.FC = () => {
   const navigation = useNavigation<RequestMoneyScreenNavigationProp>();
@@ -50,6 +51,22 @@ const RequestMoneyScreen: React.FC = () => {
       }),
     ]).start();
   }, [fadeAnim, slideAnim]);
+
+  const handlePasteRecipient = async () => {
+    try {
+      const clipboardValue = (await Clipboard.getString())?.trim();
+      if (!clipboardValue) {
+        ToastAndroid.show('Clipboard is empty.', ToastAndroid.SHORT);
+        return;
+      }
+
+      setUpiId(clipboardValue);
+      ToastAndroid.show('Pasted from clipboard.', ToastAndroid.SHORT);
+    } catch (error) {
+      console.error('Paste failed:', error);
+      ToastAndroid.show('Unable to paste right now.', ToastAndroid.SHORT);
+    }
+  };
 
   const handleRequestMoney = async () => {
     if (!upiId) {
@@ -82,7 +99,7 @@ const RequestMoneyScreen: React.FC = () => {
           styles.scrollContent,
           {
             paddingTop: insets.top + 18,
-            paddingBottom: 140 + insets.bottom,
+            paddingBottom: 220 + insets.bottom + TAB_BAR_OFFSET,
           },
         ]}
       >
@@ -186,6 +203,13 @@ const RequestMoneyScreen: React.FC = () => {
                 keyboardType={inputType === 'mobile' ? 'phone-pad' : 'default'}
                 maxLength={inputType === 'mobile' ? 10 : undefined}
               />
+              <TouchableOpacity
+                onPress={handlePasteRecipient}
+                style={[styles.inputAction, { backgroundColor: theme.colors.surfaceVariant }]}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.inputActionText, { color: theme.colors.primary }]}>Paste</Text>
+              </TouchableOpacity>
             </View>
 
             <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>
@@ -264,6 +288,7 @@ const RequestMoneyScreen: React.FC = () => {
             paddingBottom: Math.max(insets.bottom, 16),
             backgroundColor: theme.colors.tabBar,
             borderTopColor: theme.colors.border,
+            bottom: TAB_BAR_OFFSET + insets.bottom,
           },
         ]}
       >
@@ -404,6 +429,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     padding: 0,
   },
+  inputAction: {
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    marginLeft: 10,
+  },
+  inputActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
   amountInput: {
     fontSize: 26,
     fontWeight: '700',
@@ -459,7 +496,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
     paddingTop: 14,
     paddingHorizontal: 20,
     borderTopWidth: 1,

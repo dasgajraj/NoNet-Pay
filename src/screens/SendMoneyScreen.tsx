@@ -26,6 +26,7 @@ type SendMoneyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Se
 type SendMoneyScreenRouteProp = RouteProp<RootStackParamList, 'SendMoney'>;
 
 const quickAmounts = [100, 200, 500, 1000, 2000, 5000];
+const TAB_BAR_OFFSET = 110;
 
 const SendMoneyScreen: React.FC = () => {
   const navigation = useNavigation<SendMoneyScreenNavigationProp>();
@@ -58,6 +59,22 @@ const SendMoneyScreen: React.FC = () => {
       setPhoneNumber(route.params.upiId);
     }
   }, [fadeAnim, route.params?.upiId, slideAnim]);
+
+  const handlePasteRecipient = async () => {
+    try {
+      const clipboardValue = (await Clipboard.getString())?.trim();
+      if (!clipboardValue) {
+        ToastAndroid.show('Clipboard is empty.', ToastAndroid.SHORT);
+        return;
+      }
+
+      setPhoneNumber(clipboardValue);
+      ToastAndroid.show('Pasted from clipboard.', ToastAndroid.SHORT);
+    } catch (error) {
+      console.error('Paste failed:', error);
+      ToastAndroid.show('Unable to paste right now.', ToastAndroid.SHORT);
+    }
+  };
 
   const handleSendMoney = async () => {
     if (!phoneNumber || !amount) {
@@ -92,7 +109,7 @@ const SendMoneyScreen: React.FC = () => {
             styles.scrollContent,
             {
               paddingTop: insets.top + 18,
-              paddingBottom: 180 + insets.bottom,
+              paddingBottom: 240 + insets.bottom + TAB_BAR_OFFSET,
             },
           ]}
         >
@@ -157,8 +174,15 @@ const SendMoneyScreen: React.FC = () => {
                   onChangeText={setPhoneNumber}
                   autoCapitalize="none"
                 />
+                <TouchableOpacity
+                  onPress={handlePasteRecipient}
+                  style={[styles.inputAction, { backgroundColor: theme.colors.surfaceVariant }]}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.inputActionText, { color: theme.colors.primary }]}>Paste</Text>
+                </TouchableOpacity>
                 {phoneNumber.length > 0 && (
-                  <TouchableOpacity onPress={() => setPhoneNumber('')}>
+                  <TouchableOpacity onPress={() => setPhoneNumber('')} style={styles.clearButton}>
                     <Icon name="close-circle" size={18} color={theme.colors.textTertiary} />
                   </TouchableOpacity>
                 )}
@@ -266,12 +290,13 @@ const SendMoneyScreen: React.FC = () => {
         <View
           style={[
             styles.footer,
-            {
-              paddingBottom: Math.max(insets.bottom, 16),
-              backgroundColor: theme.colors.tabBar,
-              borderTopColor: theme.colors.border,
-            },
-          ]}
+          {
+            paddingBottom: Math.max(insets.bottom, 16),
+            backgroundColor: theme.colors.tabBar,
+            borderTopColor: theme.colors.border,
+            bottom: TAB_BAR_OFFSET + insets.bottom,
+          },
+        ]}
         >
           <Text style={[styles.footerHint, { color: theme.colors.textSecondary }]}>
             {phoneNumber.includes('@')
@@ -408,6 +433,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     padding: 0,
   },
+  inputAction: {
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    marginLeft: 10,
+  },
+  inputActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  clearButton: {
+    marginLeft: 10,
+  },
   multilineInput: {
     minHeight: 70,
     textAlignVertical: 'top',
@@ -486,7 +526,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
     paddingHorizontal: 20,
     paddingTop: 14,
     borderTopWidth: 1,
