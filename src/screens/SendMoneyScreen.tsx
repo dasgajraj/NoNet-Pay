@@ -19,8 +19,9 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { USSD_CODES, dialUssd } from '../services/ussdService';
+import { USSD_CODES } from '../services/ussdService';
 import { useTheme } from '../context/ThemeContext';
+import { useUssdSession } from '../context/UssdSessionContext';
 
 type SendMoneyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SendMoney'>;
 type SendMoneyScreenRouteProp = RouteProp<RootStackParamList, 'SendMoney'>;
@@ -33,6 +34,7 @@ const SendMoneyScreen: React.FC = () => {
   const route = useRoute<SendMoneyScreenRouteProp>();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const { attempts, activeAttempt, retryVerification, startTrackedPayment } = useUssdSession();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -83,19 +85,25 @@ const SendMoneyScreen: React.FC = () => {
 
     try {
       Vibration.vibrate([0, 100, 100, 100]);
-
-      if (phoneNumber.includes('@')) {
-        await Clipboard.setString(phoneNumber);
-        ToastAndroid.show('UPI ID copied. Paste it in the *99# dialog.', ToastAndroid.LONG);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await dialUssd(USSD_CODES.SEND_VIA_UPI, setLoading);
-      } else {
-        await dialUssd(USSD_CODES.SEND_VIA_MOBILE(phoneNumber, amount), setLoading);
-      }
+      await startTrackedPayment({
+        kind: 'send',
+        recipientType: phoneNumber.includes('@') ? 'upi' : 'mobile',
+        recipientValue: phoneNumber,
+        amount,
+        note,
+        dialCode: phoneNumber.includes('@') ? USSD_CODES.SEND_VIA_UPI : USSD_CODES.SEND_VIA_MOBILE(phoneNumber, amount),
+        clipboardValue: phoneNumber.includes('@') ? phoneNumber : undefined,
+        setLoading,
+      });
     } catch (error) {
       console.error('Error:', error);
     }
   };
+
+  const latestSendAttempt =
+    activeAttempt?.kind === 'send'
+      ? activeAttempt
+      : attempts.find(attempt => attempt.kind === 'send') ?? null;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -284,6 +292,42 @@ const SendMoneyScreen: React.FC = () => {
                 ) : null}
               </View>
             )}
+
+            {latestSendAttempt ? (
+              <View
+                style={[
+                  styles.statusCard,
+                  {
+                    backgroundColor: theme.colors.card,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.statusHeader}>
+                  <Text style={[styles.statusTitle, { color: theme.colors.text }]}>Payment tracking</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
+                    <Text style={[styles.statusBadgeText, { color: theme.colors.textSecondary }]}>
+                      {latestSendAttempt.status.replace(/_/g, ' ')}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.statusSummary, { color: theme.colors.text }]}>
+                  {latestSendAttempt.verificationSummary ?? 'Waiting to start'}
+                </Text>
+                <Text style={[styles.statusDetail, { color: theme.colors.textSecondary }]}>
+                  {latestSendAttempt.verificationDetail ??
+                    'The app will verify the latest send attempt after you return from the USSD flow.'}
+                </Text>
+                {latestSendAttempt.status !== 'success' && latestSendAttempt.status !== 'failed' ? (
+                  <TouchableOpacity
+                    style={[styles.retryButton, { borderColor: theme.colors.borderStrong }]}
+                    onPress={() => retryVerification(latestSendAttempt.id)}
+                  >
+                    <Text style={[styles.retryButtonText, { color: theme.colors.text }]}>Verify again</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
           </Animated.View>
         </ScrollView>
 
@@ -521,6 +565,53 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     letterSpacing: -0.5,
+  },
+  statusCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 18,
+    marginTop: 16,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  statusTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'capitalize',
+  },
+  statusSummary: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  statusDetail: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  retryButton: {
+    marginTop: 14,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   footer: {
     position: 'absolute',

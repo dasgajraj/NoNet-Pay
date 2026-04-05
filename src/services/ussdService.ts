@@ -1,5 +1,5 @@
 import { Alert, PermissionsAndroid, Clipboard, ToastAndroid } from 'react-native';
-import { dialUssdWithIntent } from '../UssdModule';
+import { dialUssd as sendNativeUssdRequest, dialUssdWithIntent } from '../UssdModule';
 
 export const requestPermissions = async (): Promise<void> => {
   try {
@@ -18,7 +18,7 @@ export const dialUssd = async (
   code: string,
   setLoading: (loading: boolean) => void,
   dataToCopy?: string
-): Promise<void> => {
+): Promise<boolean> => {
   try {
     setLoading(true);
     
@@ -38,12 +38,24 @@ export const dialUssd = async (
     
     await dialUssdWithIntent(code);
     setLoading(false);
+    return true;
   } catch (error: any) {
     setLoading(false);
     Alert.alert(
       'Error',
       'Failed to dial USSD: ' + (error?.message || 'Unknown error')
     );
+    return false;
+  }
+};
+
+export const sendUssdRequest = async (code: string): Promise<boolean> => {
+  try {
+    await sendNativeUssdRequest(code);
+    return true;
+  } catch (error) {
+    console.error('Failed to send direct USSD request:', error);
+    return false;
   }
 };
 

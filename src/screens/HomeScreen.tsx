@@ -23,6 +23,7 @@ import {
   getBiometricName,
 } from '../services/BiometricAuth';
 import QRScanner from '../components/QRScanner';
+import { useUssdSession } from '../context/UssdSessionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -42,6 +43,7 @@ const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { isLocked, setIsLocked } = useAuth();
+  const { attempts, retryVerification } = useUssdSession();
   const [biometryType, setBiometryType] = useState('');
   const [loading, setLoading] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
@@ -149,6 +151,8 @@ const HomeScreen: React.FC = () => {
       screen: 'Home',
     },
   ];
+
+  const latestAttempt = attempts[0] ?? null;
 
   const handleActionPress = async (action: QuickAction) => {
     switch (action.id) {
@@ -382,6 +386,42 @@ const HomeScreen: React.FC = () => {
               </Text>
             </View>
           </View>
+
+          {latestAttempt ? (
+            <View
+              style={[
+                styles.trackingCard,
+                {
+                  backgroundColor: theme.colors.cardElevated,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <View style={styles.trackingHeader}>
+                <Text style={[styles.trackingTitle, { color: theme.colors.text }]}>Latest payment status</Text>
+                <View style={[styles.trackingBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
+                  <Text style={[styles.trackingBadgeText, { color: theme.colors.textSecondary }]}>
+                    {latestAttempt.status.replace(/_/g, ' ')}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.trackingSummary, { color: theme.colors.text }]}>
+                {latestAttempt.verificationSummary ?? 'Awaiting status'}
+              </Text>
+              <Text style={[styles.trackingDetail, { color: theme.colors.textSecondary }]}>
+                {latestAttempt.verificationDetail ??
+                  'Tracked USSD attempts will appear here after you start a send or request flow.'}
+              </Text>
+              {latestAttempt.status !== 'success' && latestAttempt.status !== 'failed' ? (
+                <TouchableOpacity
+                  style={[styles.trackingButton, { borderColor: theme.colors.borderStrong }]}
+                  onPress={() => retryVerification(latestAttempt.id)}
+                >
+                  <Text style={[styles.trackingButtonText, { color: theme.colors.text }]}>Run verification</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
         </Animated.View>
       </ScrollView>
 
@@ -566,6 +606,7 @@ const styles = StyleSheet.create({
     padding: 18,
     flexDirection: 'row',
     gap: 14,
+    marginBottom: 16,
   },
   bannerIconWrap: {
     width: 42,
@@ -585,6 +626,52 @@ const styles = StyleSheet.create({
   bannerSubtitle: {
     fontSize: 13,
     lineHeight: 19,
+  },
+  trackingCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 18,
+  },
+  trackingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  trackingTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  trackingBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  trackingBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'capitalize',
+  },
+  trackingSummary: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  trackingDetail: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  trackingButton: {
+    marginTop: 14,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trackingButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   lockDecorTop: {
     position: 'absolute',

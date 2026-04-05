@@ -17,8 +17,9 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { USSD_CODES, dialUssd } from '../services/ussdService';
+import { USSD_CODES } from '../services/ussdService';
 import { useTheme } from '../context/ThemeContext';
+import { useUssdSession } from '../context/UssdSessionContext';
 
 type RequestMoneyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'RequestMoney'>;
 
@@ -29,6 +30,7 @@ const RequestMoneyScreen: React.FC = () => {
   const navigation = useNavigation<RequestMoneyScreenNavigationProp>();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const { attempts, activeAttempt, retryVerification, startTrackedPayment } = useUssdSession();
   const [amount, setAmount] = useState('');
   const [upiId, setUpiId] = useState('');
   const [inputType, setInputType] = useState<'upi' | 'mobile'>('upi');
@@ -75,21 +77,24 @@ const RequestMoneyScreen: React.FC = () => {
 
     try {
       Vibration.vibrate([0, 100, 100, 100]);
-
-      if (inputType === 'upi') {
-        await Clipboard.setString(upiId);
-        ToastAndroid.show('UPI ID copied. Paste it in the *99# dialog.', ToastAndroid.LONG);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await dialUssd(USSD_CODES.REQUEST_MONEY, setLoading, upiId);
-      } else {
-        ToastAndroid.show('Enter amount and UPI PIN in the *99# dialog.', ToastAndroid.LONG);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await dialUssd(`*99*2*${upiId}#`, setLoading);
-      }
+      await startTrackedPayment({
+        kind: 'request',
+        recipientType: inputType,
+        recipientValue: upiId,
+        amount,
+        dialCode: inputType === 'upi' ? USSD_CODES.REQUEST_MONEY : `*99*2*${upiId}#`,
+        clipboardValue: inputType === 'upi' ? upiId : undefined,
+        setLoading,
+      });
     } catch (error) {
       console.error('Error:', error);
     }
   };
+
+  const latestRequestAttempt =
+    activeAttempt?.kind === 'request'
+      ? activeAttempt
+      : attempts.find(attempt => attempt.kind === 'request') ?? null;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -278,6 +283,42 @@ const RequestMoneyScreen: React.FC = () => {
               </Text>
             </View>
           </View>
+
+          {latestRequestAttempt ? (
+            <View
+              style={[
+                styles.statusCard,
+                {
+                  backgroundColor: theme.colors.card,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <View style={styles.statusHeader}>
+                <Text style={[styles.statusTitle, { color: theme.colors.text }]}>Request tracking</Text>
+                <View style={[styles.statusBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
+                  <Text style={[styles.statusBadgeText, { color: theme.colors.textSecondary }]}>
+                    {latestRequestAttempt.status.replace(/_/g, ' ')}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.statusSummary, { color: theme.colors.text }]}>
+                {latestRequestAttempt.verificationSummary ?? 'Waiting to start'}
+              </Text>
+              <Text style={[styles.statusDetail, { color: theme.colors.textSecondary }]}>
+                {latestRequestAttempt.verificationDetail ??
+                  'The app will verify the latest request attempt after you return from the USSD flow.'}
+              </Text>
+              {latestRequestAttempt.status !== 'success' && latestRequestAttempt.status !== 'failed' ? (
+                <TouchableOpacity
+                  style={[styles.retryButton, { borderColor: theme.colors.borderStrong }]}
+                  onPress={() => retryVerification(latestRequestAttempt.id)}
+                >
+                  <Text style={[styles.retryButtonText, { color: theme.colors.text }]}>Verify again</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
         </Animated.View>
       </ScrollView>
 
@@ -491,6 +532,53 @@ const styles = StyleSheet.create({
   infoBody: {
     fontSize: 13,
     lineHeight: 20,
+  },
+  statusCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 18,
+    marginTop: 16,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  statusTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'capitalize',
+  },
+  statusSummary: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  statusDetail: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  retryButton: {
+    marginTop: 14,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   footer: {
     position: 'absolute',
