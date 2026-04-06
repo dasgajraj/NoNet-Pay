@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { onUssdError, onUssdResponse } from '../UssdModule';
 import { loadPaymentAttempts, savePaymentAttempts } from '../services/paymentAttemptStore';
@@ -49,6 +49,7 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [attempts, setAttempts] = useState<PaymentAttempt[]>([]);
   const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const attemptsRef = useRef<PaymentAttempt[]>([]);
   const verificationRef = useRef<{ attemptId: string; stepIndex: number; timeout: ReturnType<typeof setTimeout> | null } | null>(null);
 
   useEffect(() => {
@@ -67,18 +68,22 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
     savePaymentAttempts(attempts);
   }, [attempts]);
 
+  useEffect(() => {
+    attemptsRef.current = attempts;
+  }, [attempts]);
+
   const activeAttempt = useMemo(
     () => attempts.find(attempt => attempt.id === activeAttemptId) ?? null,
     [attempts, activeAttemptId],
   );
 
-  const updateAttempt = (attemptId: string, updater: (attempt: PaymentAttempt) => PaymentAttempt) => {
+  const updateAttempt = useCallback((attemptId: string, updater: (attempt: PaymentAttempt) => PaymentAttempt) => {
     setAttempts(prev =>
       prev.map(attempt => (attempt.id === attemptId ? updater(attempt) : attempt)),
     );
-  };
+  }, []);
 
-  const finalizeAttempt = (attemptId: string, status: PaymentAttemptStatus, summary: string, detail: string) => {
+  const finalizeAttempt = useCallback((attemptId: string, status: PaymentAttemptStatus, summary: string, detail: string) => {
     updateAttempt(attemptId, attempt => ({
       ...attempt,
       status,
@@ -91,18 +96,18 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
       clearTimeout(verificationRef.current.timeout);
     }
     verificationRef.current = null;
-  };
+  }, [updateAttempt]);
 
-  const appendVerificationRecord = (attemptId: string, record: VerificationRecord) => {
+  const appendVerificationRecord = useCallback((attemptId: string, record: VerificationRecord) => {
     updateAttempt(attemptId, attempt => ({
       ...attempt,
       verificationRecords: [record, ...attempt.verificationRecords].slice(0, 8),
       updatedAt: record.timestamp,
     }));
-  };
+  }, [updateAttempt]);
 
-  const runVerificationStep = async (attemptId: string, stepIndex: number) => {
-    const attempt = attempts.find(item => item.id === attemptId);
+  const runVerificationStep = useCallback(async (attemptId: string, stepIndex: number) => {
+    const attempt = attemptsRef.current.find(item => item.id === attemptId);
     if (!attempt) {
       return;
     }
@@ -151,7 +156,7 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
       stepIndex,
       timeout: setTimeout(() => {
         Log.warn(TAG, `Verification timeout for ${attemptId} at step ${stepIndex}`);
-        const latestAttempt = attempts.find(item => item.id === attemptId);
+        const latestAttempt = attemptsRef.current.find(item => item.id === attemptId);
         if (latestAttempt && stepIndex + 1 < latestAttempt.verificationCodes.length) {
           runVerificationStep(attemptId, stepIndex + 1);
         } else {
@@ -164,17 +169,17 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
         }
       }, VERIFICATION_TIMEOUT_MS),
     };
-  };
+  }, [finalizeAttempt, updateAttempt]);
 
-  const beginVerification = async (attemptId: string) => {
-    const attempt = attempts.find(item => item.id === attemptId);
+  const beginVerification = useCallback(async (attemptId: string) => {
+    const attempt = attemptsRef.current.find(item => item.id === attemptId);
     if (!attempt) {
       return;
     }
 
     Log.info(TAG, `Beginning verification for ${attemptId}`);
     await runVerificationStep(attemptId, 0);
-  };
+  }, [runVerificationStep]);
 
   useEffect(() => {
     const responseSubscription = onUssdResponse((response: string) => {
@@ -189,7 +194,7 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       const parsed = parseUssdResult(response);
       appendVerificationRecord(attemptId, {
-        code: attempts.find(attempt => attempt.id === attemptId)?.verificationCodes[stepIndex] ?? 'unknown',
+        code: attemptsRef.current.find(attempt => attempt.id === attemptId)?.verificationCodes[stepIndex] ?? 'unknown',
         source: 'response',
         message: response,
         outcome: parsed.outcome,
@@ -201,7 +206,7 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
         return;
       }
 
-      const attempt = attempts.find(item => item.id === attemptId);
+      const attempt = attemptsRef.current.find(item => item.id === attemptId);
       if (attempt && stepIndex + 1 < attempt.verificationCodes.length) {
         runVerificationStep(attemptId, stepIndex + 1);
       } else {
@@ -220,14 +225,14 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       appendVerificationRecord(attemptId, {
-        code: attempts.find(attempt => attempt.id === attemptId)?.verificationCodes[stepIndex] ?? 'unknown',
+        code: attemptsRef.current.find(attempt => attempt.id === attemptId)?.verificationCodes[stepIndex] ?? 'unknown',
         source: 'error',
         message: errorMessage,
         outcome: 'unknown',
         timestamp: new Date().toISOString(),
       });
 
-      const attempt = attempts.find(item => item.id === attemptId);
+      const attempt = attemptsRef.current.find(item => item.id === attemptId);
       if (attempt && stepIndex + 1 < attempt.verificationCodes.length) {
         runVerificationStep(attemptId, stepIndex + 1);
       } else {
@@ -244,7 +249,7 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
       responseSubscription.remove();
       errorSubscription.remove();
     };
-  }, [attempts]);
+  }, [appendVerificationRecord, finalizeAttempt, runVerificationStep]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
@@ -269,7 +274,7 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
     return () => {
       subscription.remove();
     };
-  }, [activeAttempt, attempts]);
+  }, [activeAttempt, beginVerification, updateAttempt]);
 
   const startTrackedPayment = async (input: StartTrackedPaymentInput) => {
     const attempt = createAttempt(input);
