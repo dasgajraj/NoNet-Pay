@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">NoNet Pay</string>
+    <string name="accessibility_service_description">Reads USSD result text so NoNet Pay can track payment status inside the app.</string>
 </resources>

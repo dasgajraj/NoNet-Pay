@@ -1,4 +1,5 @@
-import { Alert, PermissionsAndroid, Clipboard, ToastAndroid } from 'react-native';
+import { Alert, PermissionsAndroid, ToastAndroid } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { dialUssd as sendNativeUssdRequest, dialUssdWithIntent } from '../UssdModule';
 
 export const requestPermissions = async (): Promise<void> => {

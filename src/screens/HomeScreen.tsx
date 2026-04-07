@@ -43,7 +43,13 @@ const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { isLocked, setIsLocked } = useAuth();
-  const { attempts, retryVerification } = useUssdSession();
+  const {
+    accessibilityEnabled,
+    attempts,
+    openAccessibilitySetup,
+    refreshAccessibilityStatus,
+    retryVerification,
+  } = useUssdSession();
   const [biometryType, setBiometryType] = useState('');
   const [loading, setLoading] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
@@ -422,6 +428,35 @@ const HomeScreen: React.FC = () => {
               ) : null}
             </View>
           ) : null}
+
+          {!accessibilityEnabled ? (
+            <View
+              style={[
+                styles.trackingCard,
+                {
+                  backgroundColor: theme.colors.card,
+                  borderColor: theme.colors.border,
+                },
+                styles.secondaryTrackingCard,
+              ]}
+            >
+              <Text style={[styles.trackingTitle, { color: theme.colors.text }]}>Enable stronger status detection</Text>
+              <Text style={[styles.trackingDetail, { color: theme.colors.textSecondary }]}>
+                Turn on the NoNet Pay accessibility helper so the app can read success or failure text directly from the USSD dialog.
+              </Text>
+              <TouchableOpacity
+                style={[styles.trackingButton, { borderColor: theme.colors.borderStrong }]}
+                onPress={async () => {
+                  await openAccessibilitySetup();
+                  setTimeout(() => {
+                    refreshAccessibilityStatus();
+                  }, 1200);
+                }}
+              >
+                <Text style={[styles.trackingButtonText, { color: theme.colors.text }]}>Open accessibility settings</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </Animated.View>
       </ScrollView>
 
@@ -631,6 +666,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 24,
     padding: 18,
+  },
+  secondaryTrackingCard: {
+    marginTop: 16,
   },
   trackingHeader: {
     flexDirection: 'row',

@@ -2,11 +2,10 @@ package com.nonetpay
 
 import android.content.Context
 import android.content.Intent
+import android.provider.Settings
 import android.net.Uri
 import android.os.Build
-import android.telecom.TelecomManager
 import android.telephony.TelephonyManager
-import android.telephony.SubscriptionManager
 import androidx.annotation.RequiresApi
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
@@ -17,6 +16,10 @@ import androidx.core.app.ActivityCompat
 class UssdModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     
     private val context: ReactApplicationContext = reactContext
+
+    init {
+        UssdAccessibilityBridge.attach(reactContext)
+    }
     
     override fun getName(): String {
         return "UssdModule"
@@ -82,6 +85,37 @@ class UssdModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMo
             
         } catch (e: Exception) {
             promise.reject("USSD_ERROR", e.message)
+        }
+    }
+
+    @ReactMethod
+    fun openAccessibilitySettings(promise: Promise) {
+        try {
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ACCESSIBILITY_SETTINGS_ERROR", e.message)
+        }
+    }
+
+    @ReactMethod
+    fun isAccessibilityServiceEnabled(promise: Promise) {
+        try {
+            val enabledServices = Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            ) ?: ""
+
+            val expectedService = "${context.packageName}/${UssdAccessibilityService::class.java.name}"
+            val enabled = enabledServices
+                .split(":")
+                .any { it.equals(expectedService, ignoreCase = true) }
+
+            promise.resolve(enabled)
+        } catch (e: Exception) {
+            promise.reject("ACCESSIBILITY_STATUS_ERROR", e.message)
         }
     }
 

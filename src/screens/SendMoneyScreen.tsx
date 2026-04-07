@@ -11,9 +11,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Vibration,
-  Clipboard,
   ToastAndroid,
 } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
