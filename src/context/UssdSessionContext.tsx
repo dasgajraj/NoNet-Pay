@@ -124,6 +124,8 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
         return;
       }
 
+      Log.info(TAG, `USSD OUTPUT: ${text}`);
+
       const targetAttempt = activeAttemptId
         ? attemptsRef.current.find(attempt => attempt.id === activeAttemptId)
         : attemptsRef.current.find(attempt => attempt.status === 'awaiting_user_completion');

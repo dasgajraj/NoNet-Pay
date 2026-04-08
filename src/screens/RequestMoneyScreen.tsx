@@ -30,7 +30,7 @@ const RequestMoneyScreen: React.FC = () => {
   const navigation = useNavigation<RequestMoneyScreenNavigationProp>();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { attempts, activeAttempt, retryVerification, startTrackedPayment } = useUssdSession();
+  const { startTrackedPayment } = useUssdSession();
   const [amount, setAmount] = useState('');
   const [upiId, setUpiId] = useState('');
   const [inputType, setInputType] = useState<'upi' | 'mobile'>('upi');
@@ -90,11 +90,6 @@ const RequestMoneyScreen: React.FC = () => {
       console.error('Error:', error);
     }
   };
-
-  const latestRequestAttempt =
-    activeAttempt?.kind === 'request'
-      ? activeAttempt
-      : attempts.find(attempt => attempt.kind === 'request') ?? null;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -284,41 +279,6 @@ const RequestMoneyScreen: React.FC = () => {
             </View>
           </View>
 
-          {latestRequestAttempt ? (
-            <View
-              style={[
-                styles.statusCard,
-                {
-                  backgroundColor: theme.colors.card,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-            >
-              <View style={styles.statusHeader}>
-                <Text style={[styles.statusTitle, { color: theme.colors.text }]}>Request tracking</Text>
-                <View style={[styles.statusBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
-                  <Text style={[styles.statusBadgeText, { color: theme.colors.textSecondary }]}>
-                    {latestRequestAttempt.status.replace(/_/g, ' ')}
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.statusSummary, { color: theme.colors.text }]}>
-                {latestRequestAttempt.verificationSummary ?? 'Waiting to start'}
-              </Text>
-              <Text style={[styles.statusDetail, { color: theme.colors.textSecondary }]}>
-                {latestRequestAttempt.verificationDetail ??
-                  'The app will verify the latest request attempt after you return from the USSD flow.'}
-              </Text>
-              {latestRequestAttempt.status !== 'success' && latestRequestAttempt.status !== 'failed' ? (
-                <TouchableOpacity
-                  style={[styles.retryButton, { borderColor: theme.colors.borderStrong }]}
-                  onPress={() => retryVerification(latestRequestAttempt.id)}
-                >
-                  <Text style={[styles.retryButtonText, { color: theme.colors.text }]}>Verify again</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          ) : null}
         </Animated.View>
       </ScrollView>
 
@@ -333,27 +293,26 @@ const RequestMoneyScreen: React.FC = () => {
           },
         ]}
       >
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            { backgroundColor: upiId ? theme.colors.primary : theme.colors.disabled },
-          ]}
-          onPress={handleRequestMoney}
-          disabled={!upiId || loading}
-          activeOpacity={0.9}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color={theme.colors.buttonText} />
-          ) : (
-            <>
-              <Icon name="cash-plus" size={20} color={theme.colors.buttonText} />
-              <Text style={[styles.primaryButtonText, { color: theme.colors.buttonText }]}>Request via *99#</Text>
-            </>
-          )}
-        </TouchableOpacity>
-        <Text style={[styles.footerHint, { color: theme.colors.textSecondary }]}>
-          Simple, bank-backed requests that stay usable in low-connectivity situations.
-        </Text>
+        <View style={[styles.footerCard, { backgroundColor: theme.colors.cardElevated, borderColor: theme.colors.border }]}>
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              { backgroundColor: upiId ? theme.colors.primary : theme.colors.disabled },
+            ]}
+            onPress={handleRequestMoney}
+            disabled={!upiId || loading}
+            activeOpacity={0.9}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={theme.colors.buttonText} />
+            ) : (
+              <>
+                <Icon name="cash-plus" size={20} color={theme.colors.buttonText} />
+                <Text style={[styles.primaryButtonText, { color: theme.colors.buttonText }]}>Request money</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -533,53 +492,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
   },
-  statusCard: {
-    borderWidth: 1,
-    borderRadius: 24,
-    padding: 18,
-    marginTop: 16,
-  },
-  statusHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  statusTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'capitalize',
-  },
-  statusSummary: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  statusDetail: {
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  retryButton: {
-    marginTop: 14,
-    height: 44,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  retryButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
   footer: {
     position: 'absolute',
     left: 0,
@@ -587,6 +499,11 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingHorizontal: 20,
     borderTopWidth: 1,
+  },
+  footerCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 12,
   },
   primaryButton: {
     height: 58,
@@ -599,12 +516,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
-  },
-  footerHint: {
-    marginTop: 12,
-    textAlign: 'center',
-    fontSize: 12,
-    lineHeight: 18,
   },
 });
 

@@ -34,7 +34,7 @@ const SendMoneyScreen: React.FC = () => {
   const route = useRoute<SendMoneyScreenRouteProp>();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { attempts, activeAttempt, retryVerification, startTrackedPayment } = useUssdSession();
+  const { startTrackedPayment } = useUssdSession();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -99,11 +99,6 @@ const SendMoneyScreen: React.FC = () => {
       console.error('Error:', error);
     }
   };
-
-  const latestSendAttempt =
-    activeAttempt?.kind === 'send'
-      ? activeAttempt
-      : attempts.find(attempt => attempt.kind === 'send') ?? null;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -293,41 +288,6 @@ const SendMoneyScreen: React.FC = () => {
               </View>
             )}
 
-            {latestSendAttempt ? (
-              <View
-                style={[
-                  styles.statusCard,
-                  {
-                    backgroundColor: theme.colors.card,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-              >
-                <View style={styles.statusHeader}>
-                  <Text style={[styles.statusTitle, { color: theme.colors.text }]}>Payment tracking</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
-                    <Text style={[styles.statusBadgeText, { color: theme.colors.textSecondary }]}>
-                      {latestSendAttempt.status.replace(/_/g, ' ')}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={[styles.statusSummary, { color: theme.colors.text }]}>
-                  {latestSendAttempt.verificationSummary ?? 'Waiting to start'}
-                </Text>
-                <Text style={[styles.statusDetail, { color: theme.colors.textSecondary }]}>
-                  {latestSendAttempt.verificationDetail ??
-                    'The app will verify the latest send attempt after you return from the USSD flow.'}
-                </Text>
-                {latestSendAttempt.status !== 'success' && latestSendAttempt.status !== 'failed' ? (
-                  <TouchableOpacity
-                    style={[styles.retryButton, { borderColor: theme.colors.borderStrong }]}
-                    onPress={() => retryVerification(latestSendAttempt.id)}
-                  >
-                    <Text style={[styles.retryButtonText, { color: theme.colors.text }]}>Verify again</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            ) : null}
           </Animated.View>
         </ScrollView>
 
@@ -342,31 +302,26 @@ const SendMoneyScreen: React.FC = () => {
           },
         ]}
         >
-          <Text style={[styles.footerHint, { color: theme.colors.textSecondary }]}>
-            {phoneNumber.includes('@')
-              ? 'We’ll copy the UPI ID so you can paste it into the *99# flow.'
-              : 'Mobile payments open *99# with recipient and amount ready.'}
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.primaryButton,
-              { backgroundColor: phoneNumber && amount ? theme.colors.primary : theme.colors.disabled },
-            ]}
-            onPress={handleSendMoney}
-            disabled={!phoneNumber || !amount || loading}
-            activeOpacity={0.9}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color={theme.colors.buttonText} />
-            ) : (
-              <>
-                <Icon name="send-outline" size={20} color={theme.colors.buttonText} />
-                <Text style={[styles.primaryButtonText, { color: theme.colors.buttonText }]}>
-                  {phoneNumber.includes('@') ? 'Send via UPI ID' : 'Send via mobile'}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={[styles.footerCard, { backgroundColor: theme.colors.cardElevated, borderColor: theme.colors.border }]}>
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                { backgroundColor: phoneNumber && amount ? theme.colors.primary : theme.colors.disabled },
+              ]}
+              onPress={handleSendMoney}
+              disabled={!phoneNumber || !amount || loading}
+              activeOpacity={0.9}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={theme.colors.buttonText} />
+              ) : (
+                <>
+                  <Icon name="send-outline" size={20} color={theme.colors.buttonText} />
+                  <Text style={[styles.primaryButtonText, { color: theme.colors.buttonText }]}>Send money</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -566,53 +521,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.5,
   },
-  statusCard: {
-    borderWidth: 1,
-    borderRadius: 24,
-    padding: 18,
-    marginTop: 16,
-  },
-  statusHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  statusTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'capitalize',
-  },
-  statusSummary: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  statusDetail: {
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  retryButton: {
-    marginTop: 14,
-    height: 44,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  retryButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
   footer: {
     position: 'absolute',
     left: 0,
@@ -621,11 +529,10 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     borderTopWidth: 1,
   },
-  footerHint: {
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-    marginBottom: 12,
+  footerCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 12,
   },
   primaryButton: {
     height: 58,

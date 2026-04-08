@@ -45,10 +45,8 @@ const HomeScreen: React.FC = () => {
   const { isLocked, setIsLocked } = useAuth();
   const {
     accessibilityEnabled,
-    attempts,
     openAccessibilitySetup,
     refreshAccessibilityStatus,
-    retryVerification,
   } = useUssdSession();
   const [biometryType, setBiometryType] = useState('');
   const [loading, setLoading] = useState(false);
@@ -157,8 +155,6 @@ const HomeScreen: React.FC = () => {
       screen: 'Home',
     },
   ];
-
-  const latestAttempt = attempts[0] ?? null;
 
   const handleActionPress = async (action: QuickAction) => {
     switch (action.id) {
@@ -392,42 +388,6 @@ const HomeScreen: React.FC = () => {
               </Text>
             </View>
           </View>
-
-          {latestAttempt ? (
-            <View
-              style={[
-                styles.trackingCard,
-                {
-                  backgroundColor: theme.colors.cardElevated,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-            >
-              <View style={styles.trackingHeader}>
-                <Text style={[styles.trackingTitle, { color: theme.colors.text }]}>Latest payment status</Text>
-                <View style={[styles.trackingBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
-                  <Text style={[styles.trackingBadgeText, { color: theme.colors.textSecondary }]}>
-                    {latestAttempt.status.replace(/_/g, ' ')}
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.trackingSummary, { color: theme.colors.text }]}>
-                {latestAttempt.verificationSummary ?? 'Awaiting status'}
-              </Text>
-              <Text style={[styles.trackingDetail, { color: theme.colors.textSecondary }]}>
-                {latestAttempt.verificationDetail ??
-                  'Tracked USSD attempts will appear here after you start a send or request flow.'}
-              </Text>
-              {latestAttempt.status !== 'success' && latestAttempt.status !== 'failed' ? (
-                <TouchableOpacity
-                  style={[styles.trackingButton, { borderColor: theme.colors.borderStrong }]}
-                  onPress={() => retryVerification(latestAttempt.id)}
-                >
-                  <Text style={[styles.trackingButtonText, { color: theme.colors.text }]}>Run verification</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          ) : null}
 
           {!accessibilityEnabled ? (
             <View
@@ -670,34 +630,14 @@ const styles = StyleSheet.create({
   secondaryTrackingCard: {
     marginTop: 16,
   },
-  trackingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
   trackingTitle: {
     fontSize: 16,
     fontWeight: '700',
   },
-  trackingBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  trackingBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'capitalize',
-  },
-  trackingSummary: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
   trackingDetail: {
     fontSize: 13,
     lineHeight: 20,
+    marginTop: 6,
   },
   trackingButton: {
     marginTop: 14,
