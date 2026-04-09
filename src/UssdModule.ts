@@ -1,27 +1,77 @@
-import { NativeModules, NativeEventEmitter } from 'react-native';
+import { NativeEventEmitter, NativeModules } from 'react-native';
 
-const { UssdModule } = NativeModules;
-const ussdEventEmitter = new NativeEventEmitter(UssdModule);
+type AccessibilityPayload = {
+  text: string;
+  packageName?: string;
+  className?: string;
+  timestamp?: number;
+};
+
+const nativeUssdModule = NativeModules.UssdModule;
+const ussdEventEmitter = nativeUssdModule ? new NativeEventEmitter(nativeUssdModule) : null;
 
 export const dialUssd = (ussdCode: string): Promise<string> => {
-  return UssdModule.dialUssd(ussdCode);
+  if (!nativeUssdModule) {
+    return Promise.reject(new Error('UssdModule is unavailable'));
+  }
+
+  return nativeUssdModule.dialUssd(ussdCode);
 };
 
 export const dialUssdWithIntent = (ussdCode: string): Promise<string> => {
-  return UssdModule.dialUssdWithIntent(ussdCode);
+  if (!nativeUssdModule) {
+    return Promise.reject(new Error('UssdModule is unavailable'));
+  }
+
+  return nativeUssdModule.dialUssdWithIntent(ussdCode);
+};
+
+export const openAccessibilitySettings = (): Promise<boolean> => {
+  if (!nativeUssdModule) {
+    return Promise.reject(new Error('UssdModule is unavailable'));
+  }
+
+  return nativeUssdModule.openAccessibilitySettings();
+};
+
+export const isAccessibilityServiceEnabled = (): Promise<boolean> => {
+  if (!nativeUssdModule) {
+    return Promise.resolve(false);
+  }
+
+  return nativeUssdModule.isAccessibilityServiceEnabled();
 };
 
 export const onUssdResponse = (callback: (response: string) => void) => {
+  if (!ussdEventEmitter) {
+    return { remove: () => undefined };
+  }
+
   return ussdEventEmitter.addListener('ussdResponse', callback);
 };
 
 export const onUssdError = (callback: (error: string) => void) => {
+  if (!ussdEventEmitter) {
+    return { remove: () => undefined };
+  }
+
   return ussdEventEmitter.addListener('ussdError', callback);
+};
+
+export const onUssdAccessibilityText = (callback: (payload: AccessibilityPayload) => void) => {
+  if (!ussdEventEmitter) {
+    return { remove: () => undefined };
+  }
+
+  return ussdEventEmitter.addListener('ussdAccessibilityText', callback);
 };
 
 export default {
   dialUssd,
   dialUssdWithIntent,
+  openAccessibilitySettings,
+  isAccessibilityServiceEnabled,
   onUssdResponse,
   onUssdError,
+  onUssdAccessibilityText,
 };

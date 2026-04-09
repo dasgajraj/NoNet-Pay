@@ -3,21 +3,24 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
 import HomeScreen from '../screens/HomeScreen';
 import SendMoneyScreen from '../screens/SendMoneyScreen';
 import RequestMoneyScreen from '../screens/RequestMoneyScreen';
 import OnboardingScreen, { ONBOARDING_KEY } from '../screens/OnboardingScreen';
+import TransactionStatusScreen from '../screens/TransactionStatusScreen';
 import QRScanner from '../components/QRScanner';
 import CustomBottomTab from '../components/CustomBottomTab';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { navigationRef } from './navigationService';
 
 export type RootStackParamList = {
   Onboarding: undefined;
   MainTabs: undefined;
   SendMoney: { upiId?: string };
   RequestMoney: undefined;
+  TransactionStatus: { attemptId: string };
 };
 
 export type MainTabParamList = {
@@ -29,22 +32,23 @@ export type MainTabParamList = {
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+const TabBar = ({ isLocked, onScanPress, ...props }: any) => {
+  if (isLocked) {
+    return null;
+  }
+
+  return <CustomBottomTab {...props} onScanPress={onScanPress} />;
+};
+
 const MainTabs: React.FC = () => {
-  const { theme } = useTheme();
   const { isLocked } = useAuth();
   const [showScanner, setShowScanner] = useState(false);
 
   return (
     <>
       <Tab.Navigator
-        tabBar={(props) => 
-          !isLocked ? (
-            <CustomBottomTab
-              {...props}
-              onScanPress={() => setShowScanner(true)}
-            />
-          ) : null
-        }
+        // eslint-disable-next-line react/no-unstable-nested-components
+        tabBar={props => <TabBar {...props} isLocked={isLocked} onScanPress={() => setShowScanner(true)} />}
         screenOptions={{
           headerShown: false,
         }}
@@ -57,9 +61,8 @@ const MainTabs: React.FC = () => {
       <QRScanner
         visible={showScanner}
         onClose={() => setShowScanner(false)}
-        onScan={(upiId) => {
+        onScan={() => {
           setShowScanner(false);
-          // Navigate to SendMoney with scanned UPI ID
         }}
       />
     </>
@@ -87,38 +90,69 @@ const AppNavigator: React.FC = () => {
     }
   };
 
-  const handleOnboardingComplete = () => {
-    setHasCompletedOnboarding(true);
-  };
-
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <View style={[styles.loadingScreen, { backgroundColor: theme.colors.background }]}>
+        <StatusBar barStyle={theme.statusBar} backgroundColor={theme.colors.background} />
+        <View style={[styles.loadingCard, { backgroundColor: theme.colors.cardElevated, borderColor: theme.colors.border, shadowColor: theme.colors.shadow }]}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
       </View>
     );
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName={hasCompletedOnboarding ? 'MainTabs' : 'Onboarding'}
-        screenOptions={{
-          headerShown: false,
-          cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
-          gestureEnabled: true,
-          gestureDirection: 'horizontal',
-        }}
-      >
-        {!hasCompletedOnboarding && (
-          <Stack.Screen name="Onboarding">
-            {() => <OnboardingScreen onComplete={handleOnboardingComplete} />}
-          </Stack.Screen>
-        )}
-        <Stack.Screen name="MainTabs" component={MainTabs} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <>
+      <StatusBar
+        barStyle={theme.statusBar}
+        backgroundColor={theme.colors.background}
+      />
+      <NavigationContainer ref={navigationRef} theme={theme.navigationTheme}>
+        <Stack.Navigator
+          initialRouteName={hasCompletedOnboarding ? 'MainTabs' : 'Onboarding'}
+          screenOptions={{
+            headerShown: false,
+            cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+            cardStyle: {
+              backgroundColor: theme.colors.background,
+            },
+          }}
+        >
+          {!hasCompletedOnboarding && (
+            <Stack.Screen
+              name="Onboarding"
+              component={OnboardingScreen}
+              options={{ gestureEnabled: false }}
+            />
+          )}
+          <Stack.Screen name="MainTabs" component={MainTabs} />
+          <Stack.Screen name="TransactionStatus" component={TransactionStatusScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </>
   );
 };
+
+const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingCard: {
+    width: 96,
+    height: 96,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.18,
+    shadowRadius: 30,
+    elevation: 8,
+  },
+});
 
 export default AppNavigator;

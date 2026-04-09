@@ -1,15 +1,8 @@
 import React from 'react';
-import {
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  Platform,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
-
-const { width } = Dimensions.get('window');
 
 interface CustomBottomTabProps {
   state: any;
@@ -18,46 +11,47 @@ interface CustomBottomTabProps {
   onScanPress: () => void;
 }
 
+const routeMeta: Record<string, { icon: string; activeIcon: string; label: string }> = {
+  Home: { icon: 'home-outline', activeIcon: 'home', label: 'Home' },
+  SendMoney: { icon: 'send-outline', activeIcon: 'send', label: 'Send' },
+  RequestMoney: { icon: 'cash-plus', activeIcon: 'cash-plus', label: 'Request' },
+};
+
 const CustomBottomTab: React.FC<CustomBottomTabProps> = ({
   state,
   descriptors,
   navigation,
   onScanPress,
 }) => {
+  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-
-  const getIconName = (routeName: string, isFocused: boolean) => {
-    switch (routeName) {
-      case 'Home':
-        return isFocused ? 'home' : 'home-outline';
-      case 'SendMoney':
-        return isFocused ? 'send' : 'send-outline';
-      case 'RequestMoney':
-        return isFocused ? 'cash-multiple' : 'cash-multiple';
-      default:
-        return 'help-circle-outline';
-    }
-  };
 
   return (
     <View
       style={[
-        styles.container,
+        styles.wrapper,
         {
-          backgroundColor: theme.colors.surface + 'E6',
-          borderTopColor: 'transparent',
+          paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 16 : 12),
         },
       ]}
     >
-      {/* Center Notch/Cutout Background */}
-      <View style={[styles.notchContainer, { backgroundColor: theme.colors.background }]}>
-        <View style={[styles.notch, { backgroundColor: theme.colors.surface + 'E6' }]} />
-      </View>
-      
-      <View style={styles.tabContainer}>
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: theme.colors.tabBar,
+            borderColor: theme.colors.border,
+            shadowColor: theme.colors.shadow,
+          },
+        ]}
+      >
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
+          const meta = routeMeta[route.name] ?? routeMeta.Home;
+          const tabPillStyle = {
+            backgroundColor: isFocused ? theme.colors.primaryContainer : 'transparent',
+          };
 
           const onPress = () => {
             const event = navigation.emit({
@@ -71,15 +65,6 @@ const CustomBottomTab: React.FC<CustomBottomTabProps> = ({
             }
           };
 
-          // Skip middle item for scan button
-          if (index === 1) {
-            return (
-              <View key={route.key} style={styles.tabItem}>
-                <View style={styles.placeholder} />
-              </View>
-            );
-          }
-
           return (
             <TouchableOpacity
               key={route.key}
@@ -88,137 +73,99 @@ const CustomBottomTab: React.FC<CustomBottomTabProps> = ({
               accessibilityLabel={options.tabBarAccessibilityLabel}
               testID={options.tabBarTestID}
               onPress={onPress}
+              activeOpacity={0.9}
               style={styles.tabItem}
             >
               <View
-                style={[
-                  styles.iconContainer,
-                  isFocused && {
-                    backgroundColor: theme.colors.primary + '30',
-                    borderRadius: 16,
-                  },
-                ]}
+                style={[styles.tabPill, tabPillStyle]}
               >
                 <Icon
-                  name={getIconName(route.name, isFocused)}
-                  size={26}
-                  color={
-                    isFocused ? theme.colors.primary : theme.colors.textSecondary
-                  }
+                  name={isFocused ? meta.activeIcon : meta.icon}
+                  size={20}
+                  color={isFocused ? theme.colors.primary : theme.colors.textSecondary}
                 />
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    {
+                      color: isFocused ? theme.colors.primary : theme.colors.textSecondary,
+                    },
+                  ]}
+                >
+                  {meta.label}
+                </Text>
               </View>
             </TouchableOpacity>
           );
         })}
       </View>
 
-      {/* Floating Action Button for QR Scan with Background Circle */}
-      <View style={styles.fabContainer}>
-        <View style={[styles.fabBackground, { backgroundColor: theme.colors.background }]} />
-        <View style={[styles.fabRing, { borderColor: theme.colors.surface + 'E6' }]} />
-        <TouchableOpacity
-          style={[
-            styles.fab,
-            {
-              backgroundColor: theme.colors.primary,
-              shadowColor: theme.colors.primary,
-            },
-          ]}
-          onPress={onScanPress}
-          activeOpacity={0.8}
-        >
-          <Icon name="qrcode-scan" size={36} color={theme.colors.buttonText} />
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={[
+          styles.scanButton,
+          {
+            backgroundColor: theme.colors.primary,
+            shadowColor: theme.colors.shadow,
+          },
+        ]}
+        onPress={onScanPress}
+        activeOpacity={0.92}
+      >
+        <Icon name="qrcode-scan" size={22} color={theme.colors.buttonText} />
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
     position: 'absolute',
-    bottom: 10,
-    left: 10,
-    right: 10,
-    borderTopWidth: 0,
-    borderRadius: 24,
-    paddingTop: 5,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
-    elevation: 12,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
+    left: 16,
+    right: 16,
+    bottom: 0,
   },
-  tabContainer: {
+  container: {
+    height: 74,
+    borderRadius: 26,
+    borderWidth: 1,
     flexDirection: 'row',
-    height: 65,
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    elevation: 10,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  iconContainer: {
-    padding: 12,
-  },
-  placeholder: {
-    width: 80,
-    height: 80,
-  },
-  notchContainer: {
-    position: 'absolute',
-    top: -10,
-    left: width / 2 - 50,
-    width: 100,
-    height: 25,
-    borderBottomLeftRadius: 50,
-    borderBottomRightRadius: 50,
-  },
-  notch: {
-    position: 'absolute',
-    bottom: 0,
-    left: 5,
-    width: 90,
-    height: 20,
-    borderTopLeftRadius: 45,
-    borderTopRightRadius: 45,
-  },
-  fabContainer: {
-    position: 'absolute',
-    width: 90,
-    height: 90,
-    left: width / 2 - 45,
-    top: -45,
+  tabPill: {
+    minWidth: 82,
+    height: 52,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 3,
   },
-  fabBackground: {
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  scanButton: {
     position: 'absolute',
-    width: 85,
-    height: 85,
-    borderRadius: 42.5,
-    top: 2.5,
-    elevation: 0,
-  },
-  fabRing: {
-    position: 'absolute',
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    borderWidth: 3,
-  },
-  fab: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    alignSelf: 'center',
+    top: -22,
+    width: 54,
+    height: 54,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 16,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 10,
   },
 });
 

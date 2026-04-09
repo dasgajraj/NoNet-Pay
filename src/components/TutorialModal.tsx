@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors } from '../constants/styles';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useTheme } from '../context/ThemeContext';
 
 const TUTORIAL_KEY = '@nonetpay_tutorial_shown';
 
@@ -10,26 +11,34 @@ interface TutorialModalProps {
   onClose: () => void;
 }
 
+const steps = [
+  'Enter a UPI ID or mobile number in the app.',
+  'Tap the action button to open the USSD flow.',
+  'If something was copied, long-press the USSD input and paste it.',
+  'Review the amount and finish the confirmation in your bank dialog.',
+];
+
 const TutorialModal: React.FC<TutorialModalProps> = ({ visible, onClose }) => {
+  const { theme } = useTheme();
   const [fadeAnim] = useState(new Animated.Value(0));
-  const [scaleAnim] = useState(new Animated.Value(0.8));
+  const [scaleAnim] = useState(new Animated.Value(0.95));
 
   useEffect(() => {
     if (visible) {
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 300,
+          duration: 220,
           useNativeDriver: true,
         }),
         Animated.spring(scaleAnim, {
           toValue: 1,
-          friction: 8,
+          friction: 9,
           useNativeDriver: true,
         }),
       ]).start();
     }
-  }, [visible]);
+  }, [fadeAnim, scaleAnim, visible]);
 
   const handleDontShowAgain = async () => {
     await AsyncStorage.setItem(TUTORIAL_KEY, 'true');
@@ -38,59 +47,55 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ visible, onClose }) => {
 
   return (
     <Modal visible={visible} transparent animationType="none">
-      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-        <Animated.View style={[styles.container, { transform: [{ scale: scaleAnim }] }]}>
-          <Text style={styles.title}>📱 How to Use USSD</Text>
+      <Animated.View style={[styles.overlay, { opacity: fadeAnim, backgroundColor: theme.colors.overlay }]}>
+        <Animated.View
+          style={[
+            styles.container,
+            {
+              transform: [{ scale: scaleAnim }],
+              backgroundColor: theme.colors.cardElevated,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <View style={[styles.iconWrap, { backgroundColor: theme.colors.primaryContainer }]}>
+            <Icon name="help-circle-outline" size={28} color={theme.colors.primary} />
+          </View>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Using USSD the easy way</Text>
+          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+            A quick walkthrough for first-time offline payment flows.
+          </Text>
 
           <View style={styles.stepContainer}>
-            <View style={styles.step}>
-              <Text style={styles.stepNumber}>1️⃣</Text>
-              <Text style={styles.stepText}>
-                Enter UPI ID or Mobile Number in the app
-              </Text>
-            </View>
-
-            <View style={styles.step}>
-              <Text style={styles.stepNumber}>2️⃣</Text>
-              <Text style={styles.stepText}>
-                Tap "Request" - Your data will be copied to clipboard
-              </Text>
-            </View>
-
-            <View style={styles.step}>
-              <Text style={styles.stepNumber}>3️⃣</Text>
-              <Text style={styles.stepText}>
-                USSD dialer opens automatically
-              </Text>
-            </View>
-
-            <View style={styles.step}>
-              <Text style={styles.stepNumber}>4️⃣</Text>
-              <Text style={styles.stepText}>
-                <Text style={styles.highlight}>Long press</Text> on the input field → Select{' '}
-                <Text style={styles.highlight}>Paste</Text>
-              </Text>
-            </View>
-
-            <View style={styles.step}>
-              <Text style={styles.stepNumber}>5️⃣</Text>
-              <Text style={styles.stepText}>Complete the transaction in USSD</Text>
-            </View>
+            {steps.map((step, index) => (
+              <View key={step} style={styles.stepRow}>
+                <View style={[styles.stepBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
+                  <Text style={[styles.stepBadgeText, { color: theme.colors.text }]}>{index + 1}</Text>
+                </View>
+                <Text style={[styles.stepText, { color: theme.colors.textSecondary }]}>{step}</Text>
+              </View>
+            ))}
           </View>
 
-          <View style={styles.tipBox}>
-            <Text style={styles.tipTitle}>💡 Pro Tip:</Text>
-            <Text style={styles.tipText}>
-              Look for the toast notification showing what was copied!
+          <View style={[styles.tipCard, { backgroundColor: theme.colors.warningContainer }]}>
+            <Text style={[styles.tipTitle, { color: theme.colors.warning }]}>Tip</Text>
+            <Text style={[styles.tipText, { color: theme.colors.textSecondary }]}>
+              Watch for the confirmation toast if the app copies a UPI ID before opening *99#.
             </Text>
           </View>
 
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleDontShowAgain}>
-              <Text style={styles.secondaryButtonText}>Don't Show Again</Text>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.secondaryButton, { borderColor: theme.colors.borderStrong }]}
+              onPress={handleDontShowAgain}
+            >
+              <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>Don't show again</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.primaryButton} onPress={onClose}>
-              <Text style={styles.primaryButtonText}>Got It!</Text>
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
+              onPress={onClose}
+            >
+              <Text style={[styles.primaryButtonText, { color: theme.colors.buttonText }]}>Got it</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -102,99 +107,102 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ visible, onClose }) => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   container: {
-    backgroundColor: colors.white,
-    borderRadius: 24,
-    padding: 24,
     width: '100%',
-    maxWidth: 400,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    maxWidth: 420,
+    borderRadius: 28,
+    padding: 24,
+    borderWidth: 1,
+  },
+  iconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.primary,
+    fontWeight: '700',
+    letterSpacing: -0.6,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    lineHeight: 21,
     marginBottom: 20,
-    textAlign: 'center',
   },
   stepContainer: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
-  step: {
+  stepRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 14,
   },
-  stepNumber: {
-    fontSize: 20,
-    marginRight: 12,
-    minWidth: 30,
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   stepText: {
     flex: 1,
-    fontSize: 15,
-    color: colors.text,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
   },
-  highlight: {
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  tipBox: {
-    backgroundColor: '#FFF9E6',
-    padding: 16,
-    borderRadius: 12,
+  tipCard: {
+    borderRadius: 18,
+    padding: 14,
     marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.warning,
   },
   tipTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 6,
   },
   tipText: {
-    fontSize: 14,
-    color: colors.textLight,
+    fontSize: 13,
     lineHeight: 20,
   },
-  buttonContainer: {
+  buttonRow: {
     flexDirection: 'row',
     gap: 10,
   },
   primaryButton: {
     flex: 1,
-    backgroundColor: colors.primary,
-    padding: 16,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '700',
   },
   secondaryButton: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: 16,
-    borderRadius: 12,
+    flex: 1.2,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
   secondaryButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
 

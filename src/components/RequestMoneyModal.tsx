@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { styles as globalStyles, colors } from '../constants/styles';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { USSD_CODES } from '../services/ussdService';
 import TutorialModal, { TUTORIAL_KEY } from './TutorialModal';
+import { useTheme } from '../context/ThemeContext';
 
 interface RequestMoneyModalProps {
   visible: boolean;
@@ -18,6 +19,7 @@ const RequestMoneyModal: React.FC<RequestMoneyModalProps> = ({
   dialUssd,
   loading,
 }) => {
+  const { theme } = useTheme();
   const [requestUpiId, setRequestUpiId] = useState('');
   const [inputType, setInputType] = useState<'upi' | 'mobile'>('upi');
   const [showTutorial, setShowTutorial] = useState(false);
@@ -57,101 +59,93 @@ const RequestMoneyModal: React.FC<RequestMoneyModalProps> = ({
         animationType="fade"
         onRequestClose={handleClose}
       >
-        <View style={modalStyles.overlay}>
-          <View style={modalStyles.modalContainer}>
-            <View style={modalStyles.headerRow}>
-              <Text style={modalStyles.modalTitle}>Request Money</Text>
-              <TouchableOpacity 
-                style={modalStyles.helpButton}
+        <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}>
+          <View style={[styles.modalContainer, { backgroundColor: theme.colors.cardElevated, borderColor: theme.colors.border }]}>
+            <View style={styles.headerRow}>
+              <View>
+                <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Request money</Text>
+                <Text style={[styles.modalSubtitle, { color: theme.colors.textSecondary }]}>
+                  Quick request flow for UPI ID or mobile number.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.helpButton, { backgroundColor: theme.colors.primaryContainer }]}
                 onPress={() => setShowTutorial(true)}
               >
-                <Text style={modalStyles.helpButtonText}>❓</Text>
+                <Icon name="help-circle-outline" size={18} color={theme.colors.primary} />
               </TouchableOpacity>
             </View>
 
-            <View style={modalStyles.toggleContainer}>
-              <TouchableOpacity
-                style={[
-                  modalStyles.toggleButton,
-                  inputType === 'upi' && modalStyles.toggleButtonActive,
-                ]}
-                onPress={() => {
-                  setInputType('upi');
-                  setRequestUpiId('');
-                }}
-              >
-                <Text
-                  style={[
-                    modalStyles.toggleText,
-                    inputType === 'upi' && modalStyles.toggleTextActive,
-                  ]}
-                >
-                  UPI ID
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  modalStyles.toggleButton,
-                  inputType === 'mobile' && modalStyles.toggleButtonActive,
-                ]}
-                onPress={() => {
-                  setInputType('mobile');
-                  setRequestUpiId('');
-                }}
-              >
-                <Text
-                  style={[
-                    modalStyles.toggleText,
-                    inputType === 'mobile' && modalStyles.toggleTextActive,
-                  ]}
-                >
-                  Mobile Number
-                </Text>
-              </TouchableOpacity>
+            <View style={[styles.toggleContainer, { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.border }]}>
+              {(['upi', 'mobile'] as const).map(type => {
+                const active = inputType === type;
+                const toggleStyle = {
+                  backgroundColor: active ? theme.colors.primary : 'transparent',
+                };
+                return (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.toggleButton, toggleStyle]}
+                    onPress={() => {
+                      setInputType(type);
+                      setRequestUpiId('');
+                    }}
+                  >
+                    <Text style={[styles.toggleText, { color: active ? theme.colors.buttonText : theme.colors.textSecondary }]}>
+                      {type === 'upi' ? 'UPI ID' : 'Mobile'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
-            <Text style={globalStyles.inputLabel}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
               {inputType === 'upi' ? 'UPI ID' : 'Mobile Number'}
             </Text>
-            <TextInput
-              style={globalStyles.inputField}
-              placeholder={
-                inputType === 'upi' ? 'Enter UPI ID (e.g., name@upi)' : 'Enter Mobile Number'
-              }
-              placeholderTextColor="#999"
-              keyboardType={inputType === 'mobile' ? 'phone-pad' : 'default'}
-              maxLength={inputType === 'mobile' ? 10 : undefined}
-              value={requestUpiId}
-              onChangeText={setRequestUpiId}
-            />
+            <View style={[styles.inputShell, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}>
+              <Icon
+                name={inputType === 'upi' ? 'at' : 'phone-outline'}
+                size={20}
+                color={theme.colors.primary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder={inputType === 'upi' ? 'Enter UPI ID (e.g. name@upi)' : 'Enter mobile number'}
+                placeholderTextColor={theme.colors.placeholder}
+                keyboardType={inputType === 'mobile' ? 'phone-pad' : 'default'}
+                maxLength={inputType === 'mobile' ? 10 : undefined}
+                value={requestUpiId}
+                onChangeText={setRequestUpiId}
+              />
+            </View>
 
-            <View style={modalStyles.infoBox}>
-              <Text style={modalStyles.infoText}>
-                💡 Your {inputType === 'upi' ? 'UPI ID' : 'mobile number'} will be copied.
-                Long-press to paste in USSD!
+            <View style={[styles.infoBox, { backgroundColor: theme.colors.surfaceVariant }]}>
+              <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>
+                We’ll copy the {inputType === 'upi' ? 'UPI ID' : 'mobile number'} so you can paste it into the USSD prompt if needed.
               </Text>
             </View>
 
-            <View style={modalStyles.buttonContainer}>
+            <View style={styles.buttonContainer}>
               <TouchableOpacity
-                style={[modalStyles.cancelButton]}
+                style={[styles.cancelButton, { borderColor: theme.colors.borderStrong }]}
                 onPress={handleClose}
               >
-                <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+                <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
-                  modalStyles.submitButton,
-                  !requestUpiId && globalStyles.disabledButton,
+                  styles.submitButton,
+                  { backgroundColor: requestUpiId ? theme.colors.primary : theme.colors.disabled },
                 ]}
                 onPress={handleSubmit}
                 disabled={!requestUpiId || loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={theme.colors.buttonText} />
                 ) : (
-                  <Text style={modalStyles.submitButtonText}>Request</Text>
+                  <Text style={[styles.submitButtonText, { color: theme.colors.buttonText }]}>Request</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -167,84 +161,90 @@ const RequestMoneyModal: React.FC<RequestMoneyModalProps> = ({
   );
 };
 
-const modalStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    padding: 25,
     width: '100%',
-    maxWidth: 400,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    maxWidth: 420,
+    borderRadius: 28,
+    padding: 24,
+    borderWidth: 1,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 18,
   },
   modalTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    lineHeight: 19,
   },
   helpButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     alignItems: 'center',
-  },
-  helpButtonText: {
-    fontSize: 16,
+    justifyContent: 'center',
   },
   toggleContainer: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 4,
     flexDirection: 'row',
-    marginBottom: 20,
-    gap: 10,
+    marginBottom: 16,
   },
   toggleButton: {
     flex: 1,
-    padding: 12,
-    backgroundColor: colors.white,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  toggleButtonActive: {
-    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
   },
   toggleText: {
-    color: colors.primary,
-    textAlign: 'center',
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
-  toggleTextActive: {
-    color: colors.white,
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  inputShell: {
+    minHeight: 56,
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    padding: 0,
   },
   infoBox: {
-    backgroundColor: '#E8F5E9',
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 15,
-    marginBottom: 5,
+    borderRadius: 18,
+    padding: 14,
+    marginTop: 16,
   },
   infoText: {
     fontSize: 13,
-    color: colors.textLight,
-    textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -253,27 +253,26 @@ const modalStyles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: colors.background,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
   cancelButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '700',
   },
   submitButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: colors.primary,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   submitButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
 
