@@ -13,6 +13,8 @@ import {
   isAccessibilityServiceEnabled,
   onUssdAccessibilityText,
   openAccessibilitySettings,
+  playSuccessTone,
+  setSecureScreenEnabled,
 } from '../UssdModule';
 import { navigate } from '../navigation/navigationService';
 import { loadPaymentAttempts, savePaymentAttempts } from '../services/paymentAttemptStore';
@@ -103,6 +105,12 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
     refreshAccessibilityStatus();
   }, [refreshAccessibilityStatus]);
 
+  useEffect(() => {
+    return () => {
+      setSecureScreenEnabled(false);
+    };
+  }, []);
+
   const activeAttempt = useMemo(
     () => attempts.find(attempt => attempt.id === activeAttemptId) ?? null,
     [attempts, activeAttemptId],
@@ -170,12 +178,16 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (parsed.outcome === 'success' || parsed.outcome === 'failed') {
         handledCompletionRef.current[targetAttempt.id] = true;
         Log.info(TAG, `Marked attempt ${targetAttempt.id} as ${parsed.outcome}`);
+        setSecureScreenEnabled(false);
         ToastAndroid.show(
           parsed.outcome === 'success'
             ? 'Payment transferred successfully'
             : 'Payment failed',
           ToastAndroid.LONG,
         );
+        if (parsed.outcome === 'success') {
+          playSuccessTone();
+        }
         navigate('TransactionStatus', { attemptId: targetAttempt.id });
         setActiveAttemptId(null);
       }
@@ -191,10 +203,12 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
     handledCompletionRef.current[attempt.id] = false;
     setActiveAttemptId(attempt.id);
     setAttempts(prev => [attempt, ...prev].slice(0, 20));
+    await setSecureScreenEnabled(true);
 
     const started = await dialUssd(input.dialCode, input.setLoading, input.clipboardValue);
 
     if (!started) {
+      await setSecureScreenEnabled(false);
       updateAttempt(attempt.id, current => ({
         ...current,
         status: 'failed',

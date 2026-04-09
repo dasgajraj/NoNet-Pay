@@ -42,6 +42,22 @@ export const isAccessibilityServiceEnabled = (): Promise<boolean> => {
   return nativeUssdModule.isAccessibilityServiceEnabled();
 };
 
+export const playSuccessTone = (): Promise<boolean> => {
+  if (!nativeUssdModule) {
+    return Promise.resolve(false);
+  }
+
+  return nativeUssdModule.playSuccessTone();
+};
+
+export const setSecureScreenEnabled = (enabled: boolean): Promise<boolean> => {
+  if (!nativeUssdModule) {
+    return Promise.resolve(false);
+  }
+
+  return nativeUssdModule.setSecureScreenEnabled(enabled);
+};
+
 export const onUssdResponse = (callback: (response: string) => void) => {
   if (!ussdEventEmitter) {
     return { remove: () => undefined };
@@ -71,6 +87,8 @@ export default {
   dialUssdWithIntent,
   openAccessibilitySettings,
   isAccessibilityServiceEnabled,
+  playSuccessTone,
+  setSecureScreenEnabled,
   onUssdResponse,
   onUssdError,
   onUssdAccessibilityText,

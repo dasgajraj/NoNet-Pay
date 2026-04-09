@@ -2,10 +2,13 @@ package com.nonetpay
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.provider.Settings
 import android.net.Uri
 import android.os.Build
 import android.telephony.TelephonyManager
+import android.view.WindowManager
 import androidx.annotation.RequiresApi
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
@@ -116,6 +119,34 @@ class UssdModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMo
             promise.resolve(enabled)
         } catch (e: Exception) {
             promise.reject("ACCESSIBILITY_STATUS_ERROR", e.message)
+        }
+    }
+
+    @ReactMethod
+    fun playSuccessTone(promise: Promise) {
+        try {
+            val toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 220)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("SUCCESS_TONE_ERROR", e.message)
+        }
+    }
+
+    @ReactMethod
+    fun setSecureScreenEnabled(enabled: Boolean, promise: Promise) {
+        try {
+            currentActivity?.runOnUiThread {
+                val window = currentActivity?.window
+                if (enabled) {
+                    window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                } else {
+                    window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                }
+                promise.resolve(true)
+            } ?: promise.resolve(false)
+        } catch (e: Exception) {
+            promise.reject("SECURE_SCREEN_ERROR", e.message)
         }
     }
 

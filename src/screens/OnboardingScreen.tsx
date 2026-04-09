@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -14,6 +15,9 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '../context/ThemeContext';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { requestPermissions } from '../services/ussdService';
+import { useUssdSession } from '../context/UssdSessionContext';
+import AppLogo from '../components/AppLogo';
 
 interface OnboardingSlide {
   title: string;
@@ -61,6 +65,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<OnboardingNavigationProp>();
+  const { accessibilityEnabled, openAccessibilitySetup } = useUssdSession();
   const [currentIndex, setCurrentIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const translateY = useRef(new Animated.Value(0)).current;
@@ -99,11 +104,34 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
     setCurrentIndex(index);
   };
 
+  const handlePermissionsSetup = async () => {
+    await requestPermissions();
+
+    if (!accessibilityEnabled) {
+      Alert.alert(
+        'Transaction Status Access',
+        'Enable Accessibility for NoNet Pay only to read USSD transaction status messages. It is used to detect payment success or failure from the USSD dialog.',
+        [
+          {
+            text: 'Continue',
+            onPress: async () => {
+              await openAccessibilitySetup();
+              handleComplete();
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    handleComplete();
+  };
+
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
       goToIndex(currentIndex + 1);
     } else {
-      handleComplete();
+      handlePermissionsSetup();
     }
   };
 
@@ -179,6 +207,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
               },
             ]}
           >
+            <AppLogo />
             <View style={[styles.iconWrap, { backgroundColor: theme.colors.primaryContainer }]}>
               <Icon name={currentSlide.icon} size={42} color={theme.colors.primary} />
             </View>
@@ -200,8 +229,17 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
               </View>
             </View>
 
+            {currentIndex === slides.length - 1 ? (
+              <View style={[styles.permissionCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+                <Text style={[styles.permissionTitle, { color: theme.colors.text }]}>Setup on first launch</Text>
+                <Text style={[styles.permissionBody, { color: theme.colors.textSecondary }]}>
+                  We will ask for phone permissions to launch USSD and open Accessibility settings so the app can read transaction status from the USSD dialog.
+                </Text>
+              </View>
+            ) : null}
+
             <Text style={[styles.hint, { color: theme.colors.textTertiary }]}>
-              Tap anywhere or swipe to continue
+              {currentIndex === slides.length - 1 ? 'Continue to enable setup permissions' : 'Tap anywhere or swipe to continue'}
             </Text>
           </Animated.View>
         </View>
@@ -230,7 +268,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
             activeOpacity={0.9}
           >
             <Text style={[styles.primaryButtonText, { color: theme.colors.buttonText }]}>
-              {currentIndex === slides.length - 1 ? 'Get started' : 'Continue'}
+              {currentIndex === slides.length - 1 ? 'Enable and continue' : 'Continue'}
             </Text>
           </TouchableOpacity>
 
@@ -311,6 +349,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 18,
     marginBottom: 24,
   },
   eyebrow: {
@@ -353,6 +392,20 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  permissionCard: {
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 18,
+  },
+  permissionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  permissionBody: {
+    fontSize: 13,
+    lineHeight: 20,
   },
   bottomArea: {
     paddingHorizontal: 20,

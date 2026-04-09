@@ -24,6 +24,7 @@ import {
 } from '../services/BiometricAuth';
 import QRScanner from '../components/QRScanner';
 import { useUssdSession } from '../context/UssdSessionContext';
+import AppLogo from '../components/AppLogo';
 
 const { width } = Dimensions.get('window');
 
@@ -204,7 +205,9 @@ const HomeScreen: React.FC = () => {
           >
             <Icon name="shield-lock-outline" size={42} color={theme.colors.primary} />
           </View>
-          <Text style={[styles.lockTitle, { color: theme.colors.text }]}>NoNet Pay</Text>
+          <View style={styles.lockLogoWrap}>
+            <AppLogo />
+          </View>
           <Text style={[styles.lockSubtitle, { color: theme.colors.textSecondary }]}>
             Secure offline payments with biometric protection.
           </Text>
@@ -269,7 +272,7 @@ const HomeScreen: React.FC = () => {
           <View style={styles.header}>
             <View>
               <Text style={[styles.eyebrow, { color: theme.colors.textSecondary }]}>Offline payments</Text>
-              <Text style={[styles.title, { color: theme.colors.text }]}>NoNet Pay</Text>
+              <AppLogo compact />
             </View>
             <TouchableOpacity
               onPress={() => setIsLocked(true)}
@@ -763,6 +766,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     letterSpacing: -1,
+    marginBottom: 8,
+  },
+  lockLogoWrap: {
+    alignSelf: 'center',
     marginBottom: 8,
   },
   lockSubtitle: {
