@@ -45,6 +45,7 @@ const HomeScreen: React.FC = () => {
   const { isLocked, setIsLocked } = useAuth();
   const {
     accessibilityEnabled,
+    attempts,
     openAccessibilitySetup,
     refreshAccessibilityStatus,
   } = useUssdSession();
@@ -155,6 +156,10 @@ const HomeScreen: React.FC = () => {
       screen: 'Home',
     },
   ];
+
+  const recentTransactions = attempts
+    .filter(attempt => attempt.kind === 'send' && attempt.status === 'success')
+    .slice(0, 3);
 
   const handleActionPress = async (action: QuickAction) => {
     switch (action.id) {
@@ -417,6 +422,39 @@ const HomeScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           ) : null}
+
+          {recentTransactions.length > 0 ? (
+            <View style={styles.recentSection}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Recent transactions</Text>
+              {recentTransactions.map(transaction => (
+                <View
+                  key={transaction.id}
+                  style={[
+                    styles.recentCard,
+                    {
+                      backgroundColor: theme.colors.cardElevated,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <View style={[styles.recentIconWrap, { backgroundColor: theme.colors.successContainer }]}>
+                    <Icon name="check-bold" size={18} color={theme.colors.success} />
+                  </View>
+                  <View style={styles.recentTextWrap}>
+                    <Text style={[styles.recentName, { color: theme.colors.text }]}>
+                      {transaction.parsedTransaction?.name ?? transaction.recipientValue}
+                    </Text>
+                    <Text style={[styles.recentMeta, { color: theme.colors.textSecondary }]}>
+                      Ref ID: {transaction.parsedTransaction?.referenceId ?? 'Not available'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.recentAmount, { color: theme.colors.text }]}>
+                    {transaction.parsedTransaction?.amount ? `Rs.${transaction.parsedTransaction.amount}` : '--'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </Animated.View>
       </ScrollView>
 
@@ -649,6 +687,40 @@ const styles = StyleSheet.create({
   },
   trackingButtonText: {
     fontSize: 14,
+    fontWeight: '700',
+  },
+  recentSection: {
+    marginTop: 18,
+  },
+  recentCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 10,
+  },
+  recentIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recentTextWrap: {
+    flex: 1,
+  },
+  recentName: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  recentMeta: {
+    fontSize: 12,
+  },
+  recentAmount: {
+    fontSize: 15,
     fontWeight: '700',
   },
   lockDecorTop: {

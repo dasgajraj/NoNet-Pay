@@ -8,16 +8,19 @@ import HomeScreen from '../screens/HomeScreen';
 import SendMoneyScreen from '../screens/SendMoneyScreen';
 import RequestMoneyScreen from '../screens/RequestMoneyScreen';
 import OnboardingScreen, { ONBOARDING_KEY } from '../screens/OnboardingScreen';
+import TransactionStatusScreen from '../screens/TransactionStatusScreen';
 import QRScanner from '../components/QRScanner';
 import CustomBottomTab from '../components/CustomBottomTab';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { navigationRef } from './navigationService';
 
 export type RootStackParamList = {
   Onboarding: undefined;
   MainTabs: undefined;
   SendMoney: { upiId?: string };
   RequestMoney: undefined;
+  TransactionStatus: { attemptId: string };
 };
 
 export type MainTabParamList = {
@@ -104,7 +107,7 @@ const AppNavigator: React.FC = () => {
         barStyle={theme.statusBar}
         backgroundColor={theme.colors.background}
       />
-      <NavigationContainer theme={theme.navigationTheme}>
+      <NavigationContainer ref={navigationRef} theme={theme.navigationTheme}>
         <Stack.Navigator
           initialRouteName={hasCompletedOnboarding ? 'MainTabs' : 'Onboarding'}
           screenOptions={{
@@ -125,6 +128,7 @@ const AppNavigator: React.FC = () => {
             />
           )}
           <Stack.Screen name="MainTabs" component={MainTabs} />
+          <Stack.Screen name="TransactionStatus" component={TransactionStatusScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </>

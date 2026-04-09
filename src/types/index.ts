@@ -29,6 +29,12 @@ export interface VerificationRecord {
   timestamp: string;
 }
 
+export interface ParsedTransactionDetails {
+  name?: string;
+  amount?: string;
+  referenceId?: string;
+}
+
 export interface PaymentAttempt {
   id: string;
   kind: PaymentKind;
@@ -45,6 +51,7 @@ export interface PaymentAttempt {
   verificationSummary?: string;
   verificationDetail?: string;
   returnedToAppAt?: string;
+  parsedTransaction?: ParsedTransactionDetails;
 }
 
 export interface StartTrackedPaymentInput {

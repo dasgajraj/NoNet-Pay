@@ -1,13 +1,16 @@
+import { ParsedTransactionDetails } from '../types';
+
 type ParsedOutcome = 'success' | 'failed' | 'unknown';
 
 export interface ParsedUssdResult {
   outcome: ParsedOutcome;
   summary: string;
   detail: string;
+  transaction?: ParsedTransactionDetails;
 }
 
 const SUCCESS_PATTERN =
-  /your payment to\s+(.+?),\s*for\s+rs\.?\s*([\d,.]+)\s+is\s+successful\s*\{?\s*ref(?:id)?\s*:\s*([a-z0-9-]+)\s*\}?/i;
+  /your payment to\s+(.+?),\s*for\s+rs\.?\s*([\d,.]+)\s+is\s+successful\s*[({]?\s*ref(?:id)?\s*:\s*([a-z0-9-]+)\s*[)}]?/i;
 
 const FAILURE_PATTERN =
   /your payment to\s+(.+?)\s+(?:for\s+rs\.?\s*([\d,.]+)\s+)?(?:has\s+)?(failed|unsuccessful|declined)/i;
@@ -62,6 +65,11 @@ export const parseUssdResult = (message: string): ParsedUssdResult => {
       outcome: 'success',
       summary: `Payment successful to ${payee.trim()}`,
       detail: `Amount: Rs. ${amount.trim()}  Ref ID: ${referenceId.trim()}`,
+      transaction: {
+        name: payee.trim(),
+        amount: amount.trim(),
+        referenceId: referenceId.trim(),
+      },
     };
   }
 
@@ -72,6 +80,10 @@ export const parseUssdResult = (message: string): ParsedUssdResult => {
       outcome: 'failed',
       summary: `Payment failed${payee ? ` to ${payee.trim()}` : ''}`,
       detail: amount ? `Attempted amount: Rs. ${amount.trim()}` : message,
+      transaction: {
+        name: payee?.trim(),
+        amount: amount?.trim(),
+      },
     };
   }
 

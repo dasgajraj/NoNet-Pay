@@ -8,11 +8,13 @@ import React, {
   useState,
   ReactNode,
 } from 'react';
+import { ToastAndroid } from 'react-native';
 import {
   isAccessibilityServiceEnabled,
   onUssdAccessibilityText,
   openAccessibilitySettings,
 } from '../UssdModule';
+import { navigate } from '../navigation/navigationService';
 import { loadPaymentAttempts, savePaymentAttempts } from '../services/paymentAttemptStore';
 import { parseUssdResult } from '../services/ussdParser';
 import { dialUssd } from '../services/ussdService';
@@ -70,6 +72,7 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
   const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
   const attemptsRef = useRef<PaymentAttempt[]>([]);
+  const handledCompletionRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     loadPaymentAttempts().then(storedAttempts => {
@@ -134,6 +137,13 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
         return;
       }
 
+      if (
+        handledCompletionRef.current[targetAttempt.id] &&
+        (targetAttempt.status === 'success' || targetAttempt.status === 'failed')
+      ) {
+        return;
+      }
+
       const parsed = parseUssdResult(text);
       const timestamp = new Date().toISOString();
 
@@ -154,10 +164,19 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
             : parsed.summary,
         verificationDetail: parsed.detail,
         updatedAt: timestamp,
+        parsedTransaction: parsed.transaction ?? current.parsedTransaction,
       }));
 
       if (parsed.outcome === 'success' || parsed.outcome === 'failed') {
+        handledCompletionRef.current[targetAttempt.id] = true;
         Log.info(TAG, `Marked attempt ${targetAttempt.id} as ${parsed.outcome}`);
+        ToastAndroid.show(
+          parsed.outcome === 'success'
+            ? 'Payment transferred successfully'
+            : 'Payment failed',
+          ToastAndroid.LONG,
+        );
+        navigate('TransactionStatus', { attemptId: targetAttempt.id });
         setActiveAttemptId(null);
       }
     });
@@ -169,6 +188,7 @@ export const UssdSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const startTrackedPayment = useCallback(async (input: StartTrackedPaymentInput) => {
     const attempt = createAttempt(input);
+    handledCompletionRef.current[attempt.id] = false;
     setActiveAttemptId(attempt.id);
     setAttempts(prev => [attempt, ...prev].slice(0, 20));
 

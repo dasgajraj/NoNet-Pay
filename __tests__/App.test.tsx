@@ -19,6 +19,10 @@ jest.mock('@react-navigation/native', () => ({
   DefaultTheme: { colors: {} },
   DarkTheme: { colors: {} },
   useColorScheme: () => 'light',
+  createNavigationContainerRef: () => ({
+    isReady: () => false,
+    navigate: jest.fn(),
+  }),
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () =>
