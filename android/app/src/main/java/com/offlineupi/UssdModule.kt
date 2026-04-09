@@ -136,8 +136,9 @@ class UssdModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMo
     @ReactMethod
     fun setSecureScreenEnabled(enabled: Boolean, promise: Promise) {
         try {
-            currentActivity?.runOnUiThread {
-                val window = currentActivity?.window
+            val activity = context.currentActivity
+            activity?.runOnUiThread {
+                val window = activity.window
                 if (enabled) {
                     window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
                 } else {

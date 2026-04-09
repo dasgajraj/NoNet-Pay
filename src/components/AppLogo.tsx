@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+
+const appIcon = require('../assets/app-icon.png');
 
 interface AppLogoProps {
   compact?: boolean;
@@ -16,13 +17,14 @@ const AppLogo: React.FC<AppLogoProps> = ({ compact = false }) => {
         style={[
           styles.mark,
           compact ? styles.markCompact : styles.markRegular,
-          { backgroundColor: theme.colors.primaryContainer },
+          { backgroundColor: theme.colors.surface },
         ]}
       >
-        <Icon
-          name="signal-distance-variant"
-          size={compact ? 20 : 28}
-          color={theme.colors.primary}
+        <Image
+          source={appIcon}
+          style={compact ? styles.iconCompact : styles.iconRegular}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
         />
       </View>
       <View>
@@ -59,6 +61,14 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 18,
+  },
+  iconCompact: {
+    width: 28,
+    height: 28,
+  },
+  iconRegular: {
+    width: 40,
+    height: 40,
   },
   title: {
     fontWeight: '800',
